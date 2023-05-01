@@ -1,3 +1,4 @@
+import { toHex } from "@harmoniclabs/uint8array-utils";
 import { Application, Builtin, Lambda, UPLCConst, UPLCProgram, UPLCVar, compileUPLC, parseUPLC, prettyUPLC } from "../.."
 
 test("getting started", () => {
@@ -30,12 +31,23 @@ test("getting started", () => {
 
     const hex = buff.toString("hex");
 
-    console.log( hex );
-
     const parsed = parseUPLC( buff, "flat" );
 
-    console.log(
-        prettyUPLC( parsed.body, 4 )
+    const body = new Application(
+        new Application(
+            Builtin.addInteger,
+            UPLCConst.int( 2 )
+        ),
+        UPLCConst.int( 2 )
     );
+
+    const compi = compileUPLC(
+        new UPLCProgram(
+            [1,0,0],
+            body
+        )
+    ).toBuffer().buffer;
+
+    console.log( toHex( compi ) );
 
 })

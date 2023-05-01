@@ -49,3 +49,27 @@ expected output:
     
 */
 ```
+
+compile UPLC
+
+```ts
+import { toHex } from "@harmoniclabs/uint8array-utils";
+import { Application, Builtin, UPLCConst, compileUPLC, UPLCProgram } from "@harmoniclabs/uplc";
+
+const body = new Application(
+    new Application(
+        Builtin.addInteger,
+        UPLCConst.int( 2 )
+    ),
+    UPLCConst.int( 2 )
+);
+
+const compiled = compileUPLC(
+    new UPLCProgram(
+        [1,0,0],
+        body
+    )
+).toBuffer().buffer;
+
+console.log( toHex( compiled ) );// expected output: "01000033700900224009"
+```
