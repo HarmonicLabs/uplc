@@ -9,10 +9,8 @@ cabal run uplc -- example -s unitval
 (program 1.0.0 (con unit ()))
 */
 
+import { BitStream } from "@harmoniclabs/bitstream";
 import { UPLCProgram } from "..";
-import { BinaryString } from "../../../../types/bits/BinaryString";
-import { BitStream } from "../../../../types/bits/BitStream";
-import Debug from "../../../../utils/Debug";
 import { UPLCEncoder } from "../../UPLCEncoder";
 import { UPLCConst } from "../../UPLCTerms/UPLCConst";
 
@@ -29,28 +27,19 @@ describe("unitval", () => {
         );
 
         const manuallyCompiled = BitStream.fromBinStr(
-            new BinaryString(
-                [
-                    "00000001" + "00000000" + "00000000", // version 1.0.0
-                    "0100", // const tag
-                        "1" + "0011" + "0", // unit type
-                        // nothing( unit )
-                    "000001" // padding
-                ].join('')
-            )
-        );
-
-        Debug.log(
-            '',"compilation result:\n\t" + 
-            plutsCompiled.toBinStr().asString, "\n",
-            "specification expected:\n\t" +
-            manuallyCompiled.toBinStr().asString
+            [
+                "00000001" + "00000000" + "00000000", // version 1.0.0
+                "0100", // const tag
+                    "1" + "0011" + "0", // unit type
+                    // nothing( unit )
+                "000001" // padding
+            ].join('')
         );
 
         expect(
-            plutsCompiled.toBinStr().asString
+            plutsCompiled.toBinStr()
         ).toBe(
-            manuallyCompiled.toBinStr().asString
+            manuallyCompiled.toBinStr()
         )
 
         expect(

@@ -9,10 +9,8 @@ cabal run uplc -- example -s churchZero
 (program 1.0.0 (delay (lam z (lam f z))))
 */
 
-import Debug from "../../../../utils/Debug";
+import { BitStream } from "@harmoniclabs/bitstream";
 import { UPLCProgram } from "..";
-import { BinaryString } from "../../../../types/bits/BinaryString";
-import { BitStream } from "../../../../types/bits/BitStream";
 import { UPLCEncoder } from "../../UPLCEncoder";
 import { Delay } from "../../UPLCTerms/Delay";
 import { Lambda } from "../../UPLCTerms/Lambda";
@@ -37,7 +35,6 @@ describe.skip("churchZero", () => {
         );
 
         const manuallyCompiled = BitStream.fromBinStr(
-            new BinaryString(
                 [
                     "00000001" + "00000000" + "00000000", // version 1.0.0
                     "0001", // Delay
@@ -47,20 +44,12 @@ describe.skip("churchZero", () => {
                                     "0" + "0000010", // nil constructor + unsigned 2 binary ( deBruijn )
                     "00000001"
                 ].join('')
-            )
-        );
-
-        Debug.log(
-            '',"compilation result:\n\t" + 
-            plutsCompiled.toBinStr().asString, "\n",
-            "specification expected:\n\t" +
-            manuallyCompiled.toBinStr().asString
         );
 
         expect(
-            plutsCompiled.toBinStr().asString
+            plutsCompiled.toBinStr().toString()
         ).toBe(
-            manuallyCompiled.toBinStr().asString
+            manuallyCompiled.toBinStr().toString()
         )
 
         expect(

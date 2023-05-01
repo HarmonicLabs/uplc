@@ -1,8 +1,7 @@
+import { ByteString } from "@harmoniclabs/bytestring";
 import { ConstValue, isConstValue, isConstValueList } from ".."
-import { Integer, UInteger } from "../../../../../../types/ints/Integer";
-import { ByteString } from "../../../../../../types/HexString/ByteString";
-import { Pair } from "../../../../../../types/structs/Pair";
 import { fromHex } from "@harmoniclabs/uint8array-utils";
+import { Pair } from "@harmoniclabs/pair";
 
 describe("ConstValue :: isConstValue, simple values", () => {
 

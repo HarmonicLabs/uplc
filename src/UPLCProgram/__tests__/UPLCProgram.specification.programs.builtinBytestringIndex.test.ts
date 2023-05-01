@@ -1,8 +1,6 @@
-import Debug from "../../../../utils/Debug"
+import { BitStream } from "@harmoniclabs/bitstream"
+import { ByteString } from "@harmoniclabs/bytestring"
 import { UPLCProgram } from ".."
-import { BinaryString } from "../../../../types/bits/BinaryString"
-import { BitStream } from "../../../../types/bits/BitStream"
-import { ByteString } from "../../../../types/HexString/ByteString"
 import { UPLCEncoder } from "../../UPLCEncoder"
 import { Application } from "../../UPLCTerms/Application"
 import { Builtin } from "../../UPLCTerms/Builtin"
@@ -30,7 +28,6 @@ describe("bnBytestrIdx UPLCProgram", () => {
         );
 
         const manuallyCompiled = BitStream.fromBinStr(
-            new BinaryString(
                 [
                     "00000101" + "00000000" + "00000010", // version 5.0.2
                     
@@ -51,20 +48,12 @@ describe("bnBytestrIdx UPLCProgram", () => {
                                 "0" + "0000110", // this is 108642; decoded is 54321
                     "000001" // padding
                 ].join('')
-            )
-        );
-
-        Debug.log(
-            '',"compilation result:\n\t" + 
-            plutsCompiled.toBinStr().asString, "\n",
-            "specification expected:\n\t" +
-            manuallyCompiled.toBinStr().asString
         );
 
         expect(
-            plutsCompiled.toBinStr().asString
+            plutsCompiled.toBinStr()
         ).toBe(
-            manuallyCompiled.toBinStr().asString
+            manuallyCompiled.toBinStr()
         )
 
         expect(

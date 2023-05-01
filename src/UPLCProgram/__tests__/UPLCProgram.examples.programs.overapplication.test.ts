@@ -27,10 +27,8 @@ cabal run uplc -- example -s overapplication
 )
 */
 
-import Debug from "../../../../utils/Debug";
+import { BitStream } from "@harmoniclabs/bitstream";
 import { UPLCProgram } from "..";
-import { BinaryString } from "../../../../types/bits/BinaryString";
-import { BitStream } from "../../../../types/bits/BitStream";
 import { UPLCEncoder } from "../../UPLCEncoder";
 import { Application } from "../../UPLCTerms/Application";
 import { Builtin } from "../../UPLCTerms/Builtin";
@@ -71,7 +69,6 @@ describe("overapplication", () => {
         );
 
         const manuallyCompiled = BitStream.fromBinStr(
-            new BinaryString(
                 [
                     "00000001" + "00000000" + "00000000", // version 1.0.0
                     "0011", // Application
@@ -99,20 +96,12 @@ describe("overapplication", () => {
                                 "00000110", // zig zag ( 3 )
                     "0001"
                 ].join('')
-            )
-        );
-
-        Debug.log(
-            '',"compilation result:\n\t" + 
-            plutsCompiled.toBinStr().asString, "\n",
-            "specification expected:\n\t" +
-            manuallyCompiled.toBinStr().asString
         );
 
         expect(
-            plutsCompiled.toBinStr().asString
+            plutsCompiled.toBinStr()
         ).toBe(
-            manuallyCompiled.toBinStr().asString
+            manuallyCompiled.toBinStr()
         )
 
         expect(

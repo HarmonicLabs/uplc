@@ -1,7 +1,5 @@
-import Debug from "../../../../utils/Debug"
+import { BitStream } from "@harmoniclabs/bitstream"
 import { UPLCProgram } from ".."
-import { BinaryString } from "../../../../types/bits/BinaryString"
-import { BitStream } from "../../../../types/bits/BitStream"
 import { UPLCEncoder } from "../../UPLCEncoder"
 import { UPLCConst } from "../../UPLCTerms/UPLCConst"
 
@@ -18,7 +16,6 @@ describe("con11 UPLCProgram", () => {
         );
 
         const manuallyCompiled = BitStream.fromBinStr(
-            new BinaryString(
                 [
                     "0" + "0001011",    // last list elem + 11.toString(2)
                     "0" + "0010110",    // last list elem + 22.toString(2)
@@ -30,20 +27,12 @@ describe("con11 UPLCProgram", () => {
                     "0" + "0010110",    // nil constructor + zigzag(11).toString(2)
                     "000001"            // padding
                 ].join('')
-            )
-        );
-
-        Debug.log(
-            '',"compilation result:\n\t" + 
-            plutsCompiled.toBinStr().asString, "\n",
-            "specification expected:\n\t" +
-            manuallyCompiled.toBinStr().asString
         );
 
         expect(
-            plutsCompiled.toBinStr().asString
+            plutsCompiled.toBinStr()
         ).toBe(
-            manuallyCompiled.toBinStr().asString
+            manuallyCompiled.toBinStr()
         )
 
         expect(

@@ -1,7 +1,5 @@
-import Debug from "../../../../utils/Debug"
 import { UPLCEncoder, serializeBuiltin } from ".."
 import { showUPLC } from "../../UPLCTerm"
-import { BitStream } from "../../../../types/bits/BitStream"
 import { UPLCDecoder } from "../../UPLCDecoder"
 import { UPLCProgram } from "../../UPLCProgram"
 import { UPLCVersion } from "../../UPLCProgram/UPLCVersion"
@@ -10,6 +8,7 @@ import { Builtin } from "../../UPLCTerms/Builtin"
 import { Force } from "../../UPLCTerms/Force"
 import { Lambda } from "../../UPLCTerms/Lambda"
 import { UPLCConst } from "../../UPLCTerms/UPLCConst"
+import { BitStream } from "@harmoniclabs/bitstream"
 
 
 describe("serializeBuiltin", () => {
@@ -48,12 +47,6 @@ describe("serializeBuiltin", () => {
                         UPLCConst.int( 69 )
                     );
 
-                Debug.log(
-                    showUPLC(
-                        with3Apps
-                    )
-                );
-    
                 const progr = new UPLCProgram(
                     new UPLCVersion( 1, 0, 0 ),
                     with3Apps
@@ -118,12 +111,6 @@ describe("serializeBuiltin", () => {
                     )
                 ),
                 UPLCConst.unit
-            );
-
-            Debug.log(
-                showUPLC(
-                    noIdeaHowIGotHere
-                )
             );
 
             const progr = new UPLCProgram(

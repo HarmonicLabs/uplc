@@ -9,10 +9,8 @@ cabal run uplc -- example -s churchSucc
 (program 1.0.0 (lam n (delay (lam z (lam f [ f [ [ (force n) z ] f ] ])))))
 */
 
-import Debug from "../../../../utils/Debug";
+import { BitStream } from "@harmoniclabs/bitstream";
 import { UPLCProgram } from "..";
-import { BinaryString } from "../../../../types/bits/BinaryString";
-import { BitStream } from "../../../../types/bits/BitStream";
 import { UPLCEncoder } from "../../UPLCEncoder";
 import { Application } from "../../UPLCTerms/Application";
 import { Delay } from "../../UPLCTerms/Delay";
@@ -52,41 +50,32 @@ describe.skip("churchSucc", () => {
         );
 
         const manuallyCompiled = BitStream.fromBinStr(
-            new BinaryString(
-                [
-                    "00000001" + "00000000" + "00000000", // version 1.0.0
-                    "0010", // Lambda
-                        "0001", // Delay
+            [
+                "00000001" + "00000000" + "00000000", // version 1.0.0
+                "0010", // Lambda
+                    "0001", // Delay
+                        "0010", // Lambda
                             "0010", // Lambda
-                                "0010", // Lambda
+                                "0011", // Application
+                                    "0000", // UPLCVar
+                                        "0" + "0000001", // nil constructor + unsinged 1 binary
                                     "0011", // Application
-                                        "0000", // UPLCVar
-                                            "0" + "0000001", // nil constructor + unsinged 1 binary
                                         "0011", // Application
-                                            "0011", // Application
-                                                "0101", // Force
-                                                    "0000", // UPLCVar
-                                                        "0" + "0000011", // nil constructor + unsinged 3 binary 
+                                            "0101", // Force
                                                 "0000", // UPLCVar
-                                                    "0" + "0000010", // nil constructor + unsinged 2 binary
-                                                "0000", // UPLCVar
-                                                    "0" + "0000001", // nil constructor + unsinged 1 binary
-                    "00000001" // padding
-                ].join('')
-            )
-        );
-
-        Debug.log(
-            '',"compilation result:\n\t" + 
-            plutsCompiled.toBinStr().asString, "\n",
-            "specification expected:\n\t" +
-            manuallyCompiled.toBinStr().asString
+                                                    "0" + "0000011", // nil constructor + unsinged 3 binary 
+                                            "0000", // UPLCVar
+                                                "0" + "0000010", // nil constructor + unsinged 2 binary
+                                            "0000", // UPLCVar
+                                                "0" + "0000001", // nil constructor + unsinged 1 binary
+                "00000001" // padding
+            ].join('')
         );
 
         expect(
-            plutsCompiled.toBinStr().asString
+            plutsCompiled.toBinStr().toString()
         ).toBe(
-            manuallyCompiled.toBinStr().asString
+            manuallyCompiled.toBinStr().toString()
         )
 
         expect(

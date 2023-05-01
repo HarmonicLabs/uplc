@@ -48,6 +48,4 @@ test("getting started", () => {
         )
     ).toBuffer().buffer;
 
-    console.log( toHex( compi ) );
-
 })
