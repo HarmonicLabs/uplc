@@ -3,11 +3,11 @@ import { ConstType, ConstTyTag, isWellFormedConstType } from "../UPLCTerms/UPLCC
 import { ConstValue, isConstValue, isConstValueInt, isConstValueList } from "../UPLCTerms/UPLCConst/ConstValue";
 import { getNRequiredForces, isUPLCBuiltinTag } from "../UPLCTerms/Builtin/UPLCBuiltinTag";
 import { UPLCTerm, isPureUPLCTerm, PureUPLCTerm } from "../UPLCTerm";
-import { UPLCProgram } from "../UPLCProgram";
+import { UPLCProgram } from "../UPLCProgram/UPLCProgram";
 import { UPLCVersion } from "../UPLCProgram/UPLCVersion";
 import { Application } from "../UPLCTerms/Application";
-import { Builtin } from "../UPLCTerms/Builtin";
-import { UPLCConst } from "../UPLCTerms/UPLCConst";
+import { Builtin } from "../UPLCTerms/Builtin/Builtin";
+import { UPLCConst } from "../UPLCTerms/UPLCConst/UPLCConst";
 import { Delay } from "../UPLCTerms/Delay";
 import { ErrorUPLC } from "../UPLCTerms/ErrorUPLC";
 import { Force } from "../UPLCTerms/Force";
@@ -610,3 +610,13 @@ export class UPLCEncoder
         return result;
     }
 }
+
+export function compileUPLC( program: UPLCProgram ): BitStream
+{
+    return (new UPLCEncoder()).compile( program );
+}
+
+/**
+ * alias for `compileUPLC`
+ */
+export const encodeUPLC = compileUPLC;

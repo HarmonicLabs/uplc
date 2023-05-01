@@ -2,10 +2,10 @@ import { UPLCVar } from "../UPLCTerms/UPLCVar";
 import { Delay } from "../UPLCTerms/Delay";
 import { Lambda } from "../UPLCTerms/Lambda";
 import { Application } from "../UPLCTerms/Application";
-import { UPLCConst } from "../UPLCTerms/UPLCConst";
+import { UPLCConst } from "../UPLCTerms/UPLCConst/UPLCConst";
 import { Force } from "../UPLCTerms/Force";
 import { ErrorUPLC } from "../UPLCTerms/ErrorUPLC";
-import { Builtin } from "../UPLCTerms/Builtin";
+import { Builtin } from "../UPLCTerms/Builtin/Builtin";
 import { ConstType, constListTypeUtils, constPairTypeUtils, constTypeToStirng, ConstTyTag } from "../UPLCTerms/UPLCConst/ConstType";
 import { builtinTagToString, getNRequiredForces } from "../UPLCTerms/Builtin/UPLCBuiltinTag";
 import { ConstValue, isConstValueInt } from "../UPLCTerms/UPLCConst/ConstValue";
@@ -14,7 +14,7 @@ import { Pair } from "@harmoniclabs/pair";
 import { isData, dataToCbor } from "@harmoniclabs/plutus-data";
 import { assert } from "../utils/assert";
 
-export type PureUPLCTerm 
+export type UPLCTerm 
     = UPLCVar
     | Delay
     | Lambda
@@ -24,8 +24,10 @@ export type PureUPLCTerm
     | ErrorUPLC
     | Builtin;
     
-export type UPLCTerm
-    = PureUPLCTerm;
+/**
+ * @deprecated alias for `UPLCTerm` use that instead
+ */
+export type PureUPLCTerm = UPLCTerm;
 
 /**
  * **_O(1)_**

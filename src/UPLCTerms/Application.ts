@@ -1,7 +1,7 @@
 import { UPLCTerm } from "../UPLCTerm";
 import { UPLCVar } from "./UPLCVar";
 import { Lambda } from "./Lambda";
-import { Builtin } from "./Builtin";
+import { Builtin } from "./Builtin/Builtin";
 import { Force } from "./Force";
 import { BitStream } from "@harmoniclabs/bitstream";
 

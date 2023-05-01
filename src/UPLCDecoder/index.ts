@@ -1,15 +1,15 @@
-import { UPLCProgram } from "../UPLCProgram";
+import { UPLCProgram } from "../UPLCProgram/UPLCProgram";
 import { UPLCVersion } from "../UPLCProgram/UPLCVersion";
 import { PureUPLCTerm, showConstType, showUPLCConstValue } from "../UPLCTerm";
 import { Application } from "../UPLCTerms/Application";
-import { Builtin } from "../UPLCTerms/Builtin";
+import { Builtin } from "../UPLCTerms/Builtin/Builtin";
 import { builtinTagToString } from "../UPLCTerms/Builtin/UPLCBuiltinTag";
 import { Delay } from "../UPLCTerms/Delay";
 import { ErrorUPLC } from "../UPLCTerms/ErrorUPLC";
 import { Force } from "../UPLCTerms/Force";
 import { Lambda } from "../UPLCTerms/Lambda";
 import { UPLCVar } from "../UPLCTerms/UPLCVar";
-import { UPLCConst } from "../UPLCTerms/UPLCConst";
+import { UPLCConst } from "../UPLCTerms/UPLCConst/UPLCConst";
 import { ConstType, constListTypeUtils, constPairTypeUtils, constT, constTypeEq, ConstTyTag, isWellFormedConstType } from "../UPLCTerms/UPLCConst/ConstType";
 import { ConstValue, ConstValueList } from "../UPLCTerms/UPLCConst/ConstValue";
 import { fromHex, toUtf8 } from "@harmoniclabs/uint8array-utils";
@@ -408,4 +408,9 @@ export class UPLCDecoder
             readTerm()
         );
     }
+}
+
+export function parseUPLC( serializedScript: Uint8Array , format: SerializedScriptFormat = "cbor", debugLogs: boolean = false ): UPLCProgram
+{
+    return UPLCDecoder.parse( serializedScript, format, debugLogs );
 }

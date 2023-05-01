@@ -3,9 +3,9 @@ import { Delay } from "./Delay";
 import { UPLCVar } from "./UPLCVar";
 import { Lambda } from "./Lambda";
 import { Application } from "./Application";
-import { UPLCConst } from "./UPLCConst";
+import { UPLCConst } from "./UPLCConst/UPLCConst";
 import { ErrorUPLC } from "./ErrorUPLC";
-import { Builtin } from "./Builtin";
+import { Builtin } from "./Builtin/Builtin";
 import { BitStream } from "@harmoniclabs/bitstream";
 
 export type ForceableTerm
