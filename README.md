@@ -13,7 +13,7 @@ npm install @harmoniclabs/uplc
 parse and print uplc form flat hex ([`@harmoniclabs/uint8array-utils`](https://github.com/HarmonicLabs/uint8array-utils) works in every js runtime)
 ```ts
 import { fromHex } from "@harmoniclabs/uint8array-utils";
-import { parseUPLC } from "@harmoniclabs/uplc";
+import { parseUPLC, prettyUPLC } from "@harmoniclabs/uplc";
 
 const serialized: Uint8Array = fromHex( "0100003233700900219b8248050005200801" );
 
