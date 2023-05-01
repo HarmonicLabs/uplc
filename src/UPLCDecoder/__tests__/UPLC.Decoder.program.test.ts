@@ -1,6 +1,5 @@
 import { UPLCDecoder } from ".."
 import { fromHex } from "@harmoniclabs/uint8array-utils";
-import { showUPLC } from "../../UPLCTerm";
 
 
 describe("decode program", () => {

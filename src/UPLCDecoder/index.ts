@@ -14,7 +14,7 @@ import { ConstType, constListTypeUtils, constPairTypeUtils, constT, constTypeEq,
 import { ConstValue, ConstValueList } from "../UPLCTerms/UPLCConst/ConstValue";
 import { fromHex, toUtf8 } from "@harmoniclabs/uint8array-utils";
 import { ByteString } from "@harmoniclabs/bytestring";
-import { Cbor, CborBytes } from "@harmoniclabs/cbor";
+import { Cbor, CborBytes, CborNegInt, CborObj } from "@harmoniclabs/cbor";
 import UPLCFlatUtils from "../utils/UPLCFlatUtils";
 import { bigintFromBuffer } from "@harmoniclabs/bigint-utils";
 import { dataFromCbor } from "@harmoniclabs/plutus-data";
@@ -46,14 +46,29 @@ export class UPLCDecoder
 
         if( format === "cbor" )
         {
-            return this.parse(
-                (Cbor.parse(
-                    (Cbor.parse(
-                        serializedScript
-                    ) as CborBytes).buffer
-                ) as CborBytes).buffer,
-                "flat"
-            );
+            let shouldTryParseCbor = true;
+            let tmp: CborObj = undefined as any;
+            
+            while( shouldTryParseCbor )
+            {
+                try {
+                    tmp = Cbor.parse( serializedScript );
+                }
+                catch {
+                    shouldTryParseCbor = false;
+                }
+
+                if(!(tmp instanceof CborBytes))
+                {
+                    shouldTryParseCbor = false;
+                }
+                else
+                {
+                    serializedScript = tmp.buffer;
+                }
+            }
+
+            format = "flat";
         }
 
         // -------------------------- ctx steup -------------------------- //
