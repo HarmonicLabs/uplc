@@ -1,6 +1,6 @@
 import { assert } from "../../../utils/assert";
 
-export const enum ConstTyTag {
+export enum ConstTyTag {
     int = 0,
     byteStr = 1,
     str = 2,

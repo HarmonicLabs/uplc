@@ -11,7 +11,7 @@ export type UPLCBuiltinTagNumber
 /**
  * to encode as 7-bits
  */
-export const enum UPLCBuiltinTag {
+export enum UPLCBuiltinTag {
     // integers monoidal operations
     addInteger                  = 0,  // 0000000
     subtractInteger             = 1,  // 0000001
