@@ -34,12 +34,15 @@ function _showUPLC( t: UPLCTerm, dbn: number ): string
 
 type ParseUPLCTextEnv = { [x: string]: number };
 
+
 export function _parseUPLCText(
     str: string,
     env: ParseUPLCTextEnv,
     dbn: number
 ): { term: UPLCTerm, offset: number }
 {
+    // clone (other branches migh modify vars dbns)
+    env = { ...env };
     let offset = 0;
 
     const sliceTrimIncr = ( n: number = 0 ): void => {
