@@ -1,4 +1,4 @@
-import { UPLCTerm } from "../UPLCTerm";
+import { UPLCTerm } from "../UPLCTerm/UPLCTerm";
 import { UPLCVar } from "./UPLCVar";
 import { Lambda } from "./Lambda";
 import { Builtin } from "./Builtin/Builtin";

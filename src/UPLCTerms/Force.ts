@@ -1,4 +1,4 @@
-import { UPLCTerm, isUPLCTerm } from "../UPLCTerm";
+import { UPLCTerm, isUPLCTerm } from "../UPLCTerm/UPLCTerm";
 import { Delay } from "./Delay";
 import { UPLCVar } from "./UPLCVar";
 import { Lambda } from "./Lambda";

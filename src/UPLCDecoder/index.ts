@@ -1,6 +1,6 @@
 import { UPLCProgram } from "../UPLCProgram/UPLCProgram";
 import { UPLCVersion } from "../UPLCProgram/UPLCVersion";
-import { PureUPLCTerm, showConstType, showUPLCConstValue } from "../UPLCTerm";
+import { PureUPLCTerm, showConstType, showUPLCConstValue } from "../UPLCTerm/UPLCTerm";
 import { Application } from "../UPLCTerms/Application";
 import { Builtin } from "../UPLCTerms/Builtin/Builtin";
 import { builtinTagToString } from "../UPLCTerms/Builtin/UPLCBuiltinTag";

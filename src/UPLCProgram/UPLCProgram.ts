@@ -1,4 +1,4 @@
-import { UPLCTerm } from "../UPLCTerm";
+import { UPLCTerm } from "../UPLCTerm/UPLCTerm";
 import { CanBeUInteger } from "../utils/ints";
 import { UPLCVersion } from "./UPLCVersion";
 

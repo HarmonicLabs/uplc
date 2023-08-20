@@ -2,7 +2,7 @@
 import { ConstType, ConstTyTag, isWellFormedConstType } from "../UPLCTerms/UPLCConst/ConstType";
 import { ConstValue, isConstValue, isConstValueInt, isConstValueList } from "../UPLCTerms/UPLCConst/ConstValue";
 import { getNRequiredForces, isUPLCBuiltinTag } from "../UPLCTerms/Builtin/UPLCBuiltinTag";
-import { UPLCTerm, isPureUPLCTerm, PureUPLCTerm } from "../UPLCTerm";
+import { UPLCTerm, isPureUPLCTerm, PureUPLCTerm } from "../UPLCTerm/UPLCTerm";
 import { UPLCProgram } from "../UPLCProgram/UPLCProgram";
 import { UPLCVersion } from "../UPLCProgram/UPLCVersion";
 import { Application } from "../UPLCTerms/Application";

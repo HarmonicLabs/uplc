@@ -10,6 +10,8 @@ npm install @harmoniclabs/uplc
 
 ## Getting started
 
+
+### parse serialized UPLC
 parse and print uplc form flat hex ([`@harmoniclabs/uint8array-utils`](https://github.com/HarmonicLabs/uint8array-utils) works in every js runtime)
 ```ts
 import { fromHex } from "@harmoniclabs/uint8array-utils";
@@ -50,7 +52,40 @@ expected output:
 */
 ```
 
-compile UPLC
+### parse textual UPLC
+
+```ts
+import { parseUPLCText, prettyUPLC } from "@harmoniclabs/uplc";
+
+const uplc_source = `
+[
+    (lam a 
+        [
+            [
+                (builtin addInteger) 
+                (con integer 2)
+            ] 
+            [
+                [
+                    (builtin multiplyInteger) 
+                    (con integer 10)
+                ] 
+                a
+            ]
+        ]
+    ) 
+    (con integer 4)
+]`;
+
+const uplc = parseUPLCText( uplc_source );
+
+// expected output: true
+console.log(
+    prettyUPLC( uplc, 4 ) === uplc_source
+);
+```
+
+### compile UPLC to flat bytes
 
 ```ts
 import { toHex } from "@harmoniclabs/uint8array-utils";

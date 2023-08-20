@@ -1,5 +1,5 @@
 import { BitStream } from "@harmoniclabs/bitstream";
-import { UPLCTerm } from "../UPLCTerm";
+import { UPLCTerm } from "../UPLCTerm/UPLCTerm";
 
 export class Lambda
 {
