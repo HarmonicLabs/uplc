@@ -79,7 +79,7 @@ function serializeUPLCVar( uplcVar: UPLCVar ): BitStream
     result.append(
         serializeUInt(
             // no idea why deBruijn indicies start form 1...s
-            // can dev do something?
+            // can devs do something?
             uplcVar.deBruijn + BigInt( 1 )
         )
     );
@@ -173,26 +173,6 @@ export function serializeBuiltin( bn: Builtin ): BitStream
 // --------------------------------------------------- UPLCEncoder --------------------------------------------------- //
 // ------------------------------------------------------------------------------------------------------------------- //
 
-function properlyCloneUPLC( uplc: UPLCTerm ): UPLCTerm
-{
-    if( uplc instanceof UPLCVar ) return new UPLCVar( uplc.deBruijn );
-    if( uplc instanceof Delay ) return new Delay( properlyCloneUPLC( uplc.delayedTerm ) );
-    if( uplc instanceof Lambda ) return new Lambda( properlyCloneUPLC( uplc.body ) );
-    if( uplc instanceof Application )
-        return new Application(
-            properlyCloneUPLC( uplc.funcTerm ),
-            properlyCloneUPLC( uplc.argTerm )
-        );
-    if( uplc instanceof UPLCConst ) return new UPLCConst( uplc.type, uplc.value as any);
-    if( uplc instanceof Force ) return new Force( properlyCloneUPLC( uplc.termToForce ) );
-    if( uplc instanceof ErrorUPLC ) return new ErrorUPLC( uplc.msg, uplc.addInfos );
-    if( uplc instanceof Builtin ) return new Builtin( uplc.tag );
-
-    throw new Error(
-        "unknown UPLC in 'properlyCloneUPLC'"
-    );
-}
-
 export class UPLCEncoder
 {
     private _ctx: UPLCSerializationContex
@@ -215,7 +195,7 @@ export class UPLCEncoder
         if( !isPureUPLCTerm( uplc ) )
         {
             throw new Error(
-                "'replaceHoisteTerm' did not returned a 'PureUPLCTerm'"
+                "'replaceHoisteTerm' did not return an 'UPLCTerm'"
             );
         }
 
@@ -244,7 +224,7 @@ export class UPLCEncoder
         return serialized;
     }
 
-    encodeTerm( term: PureUPLCTerm ): BitStream
+    encodeTerm( term: UPLCTerm ): BitStream
     {
         if( term instanceof UPLCVar )       return this.encodeUPLCVar( term );
         if( term instanceof Delay )         return this.encodeDelayTerm( term );
@@ -478,13 +458,75 @@ export class UPLCEncoder
      * [plutus-core/plutus-core/src/PlutusCore/Data.hs](https://github.com/input-output-hk/plutus/blob/master/plutus-core/plutus-core/src/PlutusCore/Data.hs) 
      * ([```encodeData``` line](https://github.com/input-output-hk/plutus/blob/9ef6a65067893b4f9099215ff7947da00c5cd7ac/plutus-core/plutus-core/src/PlutusCore/Data.hs#L139))
      * in the Plutus GitHub repository IOHK [2019] for a definitive implementation.
+     * 
+     * from the `encodeData` source:
+     * 
+     * {- Note [The 64-byte limit]
+     *    We impose a 64-byte *on-the-wire* limit on the leaves of a serialized 'Data'. This prevents people from inserting
+     *    Mickey Mouse entire.
+     *
+     *    The simplest way of doing this is to check during deserialization that we never deserialize something that uses
+     *    more than 64-bytes, and this is largely what we do. Then it's the user's problem to not produce something too big.
+     *
+     *    But this is quite inconvenient, so see Note [Evading the 64-byte limit] for how we get around this.
+     * -}
+     * {- Note [Evading the 64-byte limit]
+     *  Implementing Note [The 64-byte limit] naively would be quite annoying:
+     *  - Users would be responsible for not creating Data values with leaves that were too big.
+     *  - If a script *required* such a thing (e.g. a counter that somehow got above 64 bytes), then the user is totally
+     *  stuck: the script demands something they cannot represent.
+     *
+     *  This is unpleasant and introduces limits. Probably limits that nobody will hit, but it's nicer to just not have them.
+     *  And it turns out that we can evade the problem with some clever encoding.
+     *
+     *  The fundamental
+     *  trick is that an *indefinite-length* CBOR bytestring is just as obfuscated as a list of bytestrings,
+     *  since it consists of a list of definite-length chunks, and each definite-length chunk must be *tagged* (at least with the size).
+     *  So we get a sequence like:
+     *
+     *  <list start>
+     *  <chunk length metadata>
+     *  <chunk>
+     *  <chunk length metadata>
+     *  ...
+     *  <list end>
+     *
+     *  The chunk length metadata has a prescribed format, such that it's difficult to manipulate it so that it
+     *  matches your "desired" data.
+     *  So this effectively breaks up the bytestring in much the same way as a list of <64 byte bytestrings.
+     *
+     *  So that solves the problem for bytestrings on the encoding side:
+     *  - if they are <=64 bytes, we can just encode them as a normal bytestring
+     *  - if they are >64 bytes, we encode them as indefinite-length bytestrings with 64-byte chunks
+     *
+     *  On the decoding side, we need to check when we decode that we never decode a definite-length
+     *  bytestring of >64 bytes. That covers our two cases:
+     *  - Short definite-length bytestrings are fine
+     *  - Long indefinite-length bytestrings are just made of short definite-length bytestings.
+     *
+     *   *  Unfortunately this all means that we have to write our own encoders/decoders so we can produce
+     *   *  chunks of the right size and check the sizes when we decode, but that's okay. Users need to do the same
+     *   *  thing: anyone encoding `Data` with their own encoders who doesn't split up big bytestrings in this way
+     *   *  will get failures when we decode them.
+     *
+     *  For integers, we have two cases. Small integers (<=64bits) can be encoded normally. Big integers are already
+     *  encoded *with a byte string*. The spec allows this to be an indefinite-length bytestring (although cborg doesn't
+     *  like it), so we can reuse our trick. Again, we need to write some manual encoders/decoders.
+     *  -}
      */
     encodeConstValueData( data: Data ): BitStream
     {
-        const cborBytes = dataToCbor( data ).asBytes;
+        const cborBytes = dataToCbor( data ).toBuffer();
 
-        if( cborBytes.length < 64 ) return this.encodeConstValueByteString( new ByteString( cborBytes ) );
+        // - if they are <=64 bytes, we can just encode them as a normal bytestring
+        if( cborBytes.length <= 64 ) return this.encodeConstValueByteString( new ByteString( cborBytes ) );
 
+        /*
+        Large (>= 4 bytes) data encoding fixed in 1.1.0^
+
+        - if they are >64 bytes, we encode them as indefinite-length bytestrings with 64-byte chunks
+        */
+        
         const head = cborBytes.at(0);
         if( head === undefined )
         throw new Error(
@@ -499,18 +541,18 @@ export class UPLCEncoder
         if( lengthAddInfo === 25 ) nLenBytes = 2;
         if( lengthAddInfo === 24 ) nLenBytes = 1;
 
-        let ptr = nLenBytes + 1 + 1 ;
+        let ptr = 0;
 
         let largeCborData = "5f";
 
         while( ptr < cborBytes.length )
         {
-            const chunkSize = Math.min( 62, cborBytes.length );
+            const chunkSize = Math.min( 64, cborBytes.length - ptr );
             const chunkEnd = ptr + chunkSize;
 
             let header = "";
-            if( chunkSize < 24 ) header = (0b010_00000 & chunkSize).toString(16);
-            else header = "58" + chunkSize.toString(16);
+            if( chunkSize < 24 ) header = (0b010_00000 | chunkSize).toString(16).padStart(2,"0");
+            else header = "58" + chunkSize.toString(16).padStart(2,"0");
 
             largeCborData = largeCborData +
                 header +
@@ -529,11 +571,9 @@ export class UPLCEncoder
      * **this function takes care of the length AND padding**
      * 
      */
-    
     encodeConstValueByteString( bs: ByteString ): BitStream
     {
         let missingBytes = bs.toString();
-        const isBadOne = missingBytes === "d87982d87981582066f225ce3f1acd5e9b133a09b571af99ea4f0742741d008e482d3d33a7329da300";
 
         const hexChunks: string[] = [];
 

@@ -12,7 +12,7 @@ import { UPLCVar } from "../UPLCTerms/UPLCVar";
 import { UPLCConst } from "../UPLCTerms/UPLCConst/UPLCConst";
 import { ConstType, constListTypeUtils, constPairTypeUtils, constT, constTypeEq, ConstTyTag, isWellFormedConstType } from "../UPLCTerms/UPLCConst/ConstType";
 import { ConstValue, ConstValueList } from "../UPLCTerms/UPLCConst/ConstValue";
-import { fromHex, toUtf8 } from "@harmoniclabs/uint8array-utils";
+import { fromHex, toHex, toUtf8 } from "@harmoniclabs/uint8array-utils";
 import { ByteString } from "@harmoniclabs/bytestring";
 import { Cbor, CborBytes, CborNegInt, CborObj } from "@harmoniclabs/cbor";
 import UPLCFlatUtils from "../utils/UPLCFlatUtils";
@@ -284,12 +284,13 @@ export class UPLCDecoder
                 case 6:
                     partialUPLC += "(error)";
                     return new ErrorUPLC(
-                        "error got from deserialization;",
-                        {
-                            debruijnLevel: currDbn,
-                            byteIndex: currByteIndex(),
-                            bitIndex: currPtr
-                        });
+                    //    "error got from deserialization;",
+                    //    {
+                    //        debruijnLevel: currDbn,
+                    //        byteIndex: currByteIndex(),
+                    //        bitIndex: currPtr
+                    //    }
+                    );
                 case 7:
                     const bn_tag = Number( readNBits(7) );
                     partialUPLC += `(builtin ${builtinTagToString( bn_tag )})`;
@@ -378,9 +379,16 @@ export class UPLCDecoder
             }
             if( constTypeEq( t, constT.data ) )
             {
-                return dataFromCbor(
-                    (readConstValueOfType( constT.byteStr ) as ByteString).toBuffer()
-                );
+                let bytes = (readConstValueOfType( constT.byteStr ) as ByteString).toBuffer();
+
+                // data > 64 bytes encoded as indefinite
+                if( bytes[0] === 0x5f )
+                {
+                    bytes = (Cbor.parse( bytes ) as CborBytes).buffer;
+                }
+                
+
+                return dataFromCbor( bytes );
             }
             if( constTypeEq( t, constT.bool ) ) return (Number(readNBits(1)) === 1);
             if( constTypeEq( t, constT.unit ) ) return undefined;
