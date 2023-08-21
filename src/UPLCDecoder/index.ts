@@ -382,11 +382,14 @@ export class UPLCDecoder
                 let bytes = (readConstValueOfType( constT.byteStr ) as ByteString).toBuffer();
 
                 // data > 64 bytes encoded as indefinite
-                if( bytes[0] === 0x5f )
+                if( 
+                    bytes[0] === 0x5f && 
+                    bytes.length > (64 + 2) 
+                )
                 {
+                    // Cbor.parse will parse the indefinite length bytes as a single buffer
                     bytes = (Cbor.parse( bytes ) as CborBytes).buffer;
                 }
-                
 
                 return dataFromCbor( bytes );
             }

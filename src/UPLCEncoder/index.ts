@@ -526,6 +526,12 @@ export class UPLCEncoder
 
         - if they are >64 bytes, we encode them as indefinite-length bytestrings with 64-byte chunks
         */
+        /*
+        **NOTE**
+
+        this is only an UPLC serialization problem;
+        UPLC builtin `serialiseData` just resutlts in a normal CBOR bytestring, no matter the length
+        */
         
         const head = cborBytes.at(0);
         if( head === undefined )
