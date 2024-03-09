@@ -22,6 +22,9 @@ import { Pair } from "@harmoniclabs/pair";
 import { dataFromCbor, isData, Data, dataToCbor } from "@harmoniclabs/plutus-data";
 import UPLCFlatUtils from "../utils/UPLCFlatUtils";
 import { assert } from "../utils/assert";
+import { Constr } from "../UPLCTerms/Constr";
+import { Case } from "../UPLCTerms/Case";
+import { isBlsG1, isBlsG2, isBlsResult } from "@harmoniclabs/crypto";
 
 /*
  * --------------------------- [encode vs serialize methods] ---------------------------
@@ -127,6 +130,12 @@ function serializeConstType( type: ConstType ): BitStream
                 // "0"            // nil // not needed (well formed) types do expects other tags after pairs
             );
         }
+        else if(
+            typeTag === ConstTyTag.bls12_381_G1_element ||
+            typeTag === ConstTyTag.bls12_381_G2_element ||
+            typeTag === ConstTyTag.bls12_381_MlResult
+        )
+        throw new Error("bls constants are not allowed in serialized UPLC");
         else
         {
             return (
@@ -150,8 +159,10 @@ export function serializeBuiltin( bn: Builtin ): BitStream
         "while serializing a Builtin 'bn.tag' is not a valid builtin tag: bn.tag: " + bn.tag
     );
 
-    const result = BitStream.fromBinStr(
-        "0101".repeat( getNRequiredForces( bn.tag ) ) // "force" tag repeated as necessary
+    const nRequiredForces = getNRequiredForces( bn.tag );
+    const result = nRequiredForces === 0 ? new BitStream( undefined ) :
+    BitStream.fromBinStr(
+        "0101".repeat( nRequiredForces ) // "force" tag repeated as necessary
     );
 
     result.append(
@@ -165,8 +176,7 @@ export function serializeBuiltin( bn: Builtin ): BitStream
     );
 
     return result;
-} 
-
+}
 
 
 // ------------------------------------------------------------------------------------------------------------------- //
@@ -187,7 +197,6 @@ export class UPLCEncoder
     compile( program: UPLCProgram ): BitStream
     {
         const v = program.version
-        const result = this.encodeVersion( v );
         this._ctx.updateVersion( v );
 
         const uplc = program.body;
@@ -199,11 +208,13 @@ export class UPLCEncoder
             );
         }
 
-        result.append(
-            this.encodeTerm(
-                uplc
-            )
-        );
+        // might modify version if necessary
+        const encodedProgram = this.encodeTerm( uplc );
+
+        // version is always byte-alligned
+        const result = this.encodeVersion( this._ctx.version );
+
+        result.append( encodedProgram );
         
         UPLCFlatUtils.padToByte( result );
 
@@ -217,6 +228,7 @@ export class UPLCEncoder
         };
     }
 
+    /** always byte-alligned */
     encodeVersion( version: UPLCVersion ): BitStream
     {
         const serialized = serializeVersion( version );
@@ -224,6 +236,7 @@ export class UPLCEncoder
         return serialized;
     }
 
+    /** might modify version if necessary */
     encodeTerm( term: UPLCTerm ): BitStream
     {
         if( term instanceof UPLCVar )       return this.encodeUPLCVar( term );
@@ -234,6 +247,8 @@ export class UPLCEncoder
         if( term instanceof Force )         return this.encodeForceTerm( term );
         if( term instanceof ErrorUPLC )     return this.encodeUPLCError( term );
         if( term instanceof Builtin )       return this.encodeBuiltin( term );
+        if( term instanceof Constr )        return this.encodeConstr( term );
+        if( term instanceof Case )          return this.encodeCase( term );
 
         throw new Error(
             "'UPLCEncoder.encodeTerm' did not match any 'PureUPLCTerm'"
@@ -335,6 +350,12 @@ export class UPLCEncoder
             isConstValue( value ),
             "a 'ConstValue' instance was expected; got" + value
         );
+
+        if(
+            isBlsG1( value ) ||
+            isBlsG2( value ) ||
+            isBlsResult( value )
+        ) throw new Error("bls constants are not allowed in serialized UPLC")
     
         if( value === undefined ) return new BitStream();
         if( isConstValueInt( value ) ) 
@@ -518,56 +539,25 @@ export class UPLCEncoder
     {
         const cborBytes = dataToCbor( data ).toBuffer();
 
-        // - if they are <=64 bytes, we can just encode them as a normal bytestring
-        if( cborBytes.length <= 64 ) return this.encodeConstValueByteString( new ByteString( cborBytes ) );
-
-        /*
-        Large (>= 4 bytes) data encoding fixed in 1.1.0^
-
-        - if they are >64 bytes, we encode them as indefinite-length bytestrings with 64-byte chunks
-        */
         /*
         **NOTE**
 
-        this is only an UPLC serialization problem;
-        UPLC builtin `serialiseData` just resutlts in a normal CBOR bytestring, no matter the length
+        large data encoding
+
+        Before we thought this was only an UPLC serialization problem;
+        and that the UPLC builtin `serialiseData` would have just resulted
+        in a normal CBOR bytestring, no matter the length.
+
+        section 4.3.2 (Note 1) is instead clear that the above was not the case
+        and that the `serialiseData` is subject to the same serialization with
+        hard coded limit on bytestrings length
+
+        `dataToCbor` was fixed accordingly since `@harmoniclabs/plutus-data@^1.2.0`
+        so we can rely on that function both in UPLC serialization
+        and on-chain builtin `serialiseData` execution
         */
-        
-        const head = cborBytes.at(0);
-        if( head === undefined )
-        throw new Error(
-            "encoded Data was empty"
-        );
 
-        const lengthAddInfo = (head & 0b000_11111);
-
-        let nLenBytes = 0;
-        if( lengthAddInfo === 27 ) nLenBytes = 8;
-        if( lengthAddInfo === 26 ) nLenBytes = 4;
-        if( lengthAddInfo === 25 ) nLenBytes = 2;
-        if( lengthAddInfo === 24 ) nLenBytes = 1;
-
-        let ptr = 0;
-
-        let largeCborData = "5f";
-
-        while( ptr < cborBytes.length )
-        {
-            const chunkSize = Math.min( 64, cborBytes.length - ptr );
-            const chunkEnd = ptr + chunkSize;
-
-            let header = "";
-            if( chunkSize < 24 ) header = (0b010_00000 | chunkSize).toString(16).padStart(2,"0");
-            else header = "58" + chunkSize.toString(16).padStart(2,"0");
-
-            largeCborData = largeCborData +
-                header +
-                toHex( cborBytes.subarray( ptr, chunkEnd ) );
-            
-            ptr = chunkEnd;
-        }
-
-        return this.encodeConstValueByteString( new ByteString( fromHex( largeCborData + "ff" ) ) );
+        return this.encodeConstValueByteString( new ByteString( cborBytes ) );
     }
 
     /**
@@ -653,6 +643,64 @@ export class UPLCEncoder
     {
         const result = serializeBuiltin( bn );
         this._ctx.incrementLengthBy( result.length );
+        return result;
+    }
+
+    encodeConstr( constr: Constr ): BitStream
+    {
+        if( !this._ctx.is_v3_friendly ) this._ctx.updateVersion( new UPLCVersion( 1, 1, 0 ) );;
+
+        const result = Constr.UPLCTag;
+        result.append(
+            serializeUInt( constr.index )
+        );
+        this._ctx.incrementLengthBy( result.length );
+        result.append(
+            this.encodeTermList( constr.terms )
+        );
+        return result;
+    }
+
+    encodeCase( caseTerm: Case ): BitStream
+    {
+        if( !this._ctx.is_v3_friendly ) this._ctx.updateVersion( new UPLCVersion( 1, 1, 0 ) );;
+
+        const result = Case.UPLCTag;
+        this._ctx.incrementLengthBy( result.length );
+        result.append(
+            this.encodeTerm( caseTerm.constrTerm )
+        );
+        result.append(
+            this.encodeTermList( caseTerm.continuations )
+        );
+        return result;
+    }
+
+    encodeTermList( list: UPLCTerm[] ): BitStream
+    {
+        if( list.length === 0 )
+        {
+            this._ctx.incrementLengthBy( 1 );
+            return BitStream.fromBinStr("0");
+        };
+
+        const ctx = this._ctx;
+
+        const result = list
+        .reduce(( accum, elem ) => {
+            const result = BitStream.fromBinStr("1");
+            // increment BEFORE `this.encodeTerm`
+            ctx.incrementLengthBy( 1 );
+            result.append(
+                this.encodeTerm( elem )
+            );
+            accum.append( result );
+            return accum; 
+        }, new BitStream( undefined ) );
+
+        ctx.incrementLengthBy( 1 );
+        result.append( BitStream.fromBinStr("0") );
+
         return result;
     }
 }

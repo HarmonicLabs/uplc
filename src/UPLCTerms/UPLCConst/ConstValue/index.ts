@@ -4,6 +4,7 @@ import { Data, isData, eqData } from "@harmoniclabs/plutus-data";
 import { ConstType, constTypeEq, constT, constTypeToStirng, ConstTyTag, isWellFormedConstType, constListTypeUtils, constPairTypeUtils } from "../ConstType";
 import { uint8ArrayEq } from "@harmoniclabs/uint8array-utils";
 import { assert } from "../../../utils/assert";
+import { BlsG1, BlsG2, BlsResult, bls12_381_G1_equal, bls12_381_G2_equal, bls12_381_eqMlResult, isBlsG1, isBlsG2, isBlsResult } from "@harmoniclabs/crypto";
 
 
 export type ConstValueList
@@ -13,7 +14,10 @@ export type ConstValueList
     | undefined[]
     | ConstValueList[]
     | Pair<ConstValue,ConstValue>[]
-    | Data[];
+    | Data[]
+    | BlsG1[]
+    | BlsG2[]
+    | BlsResult[];
 
 export type ConstValue
     = number | bigint
@@ -23,7 +27,10 @@ export type ConstValue
     | boolean
     | ConstValueList
     | Pair<ConstValue,ConstValue>
-    | Data;
+    | Data
+    | BlsG1
+    | BlsG2
+    | BlsResult;
 
 export function isConstValueInt( n: any ): n is ( number | bigint )
 {
@@ -46,8 +53,11 @@ export function isConstValue( value: any ): value is ConstValue
         isConstValueList( value )                                               ||
         (Pair.isStrictInstance( value ) &&
             isConstValue( value.fst ) && isConstValue( value.snd ))             ||
-        ( !Pair.isStrictInstance(value) && isData( value ) )
-    )
+        isData( value )                                                         ||
+        isBlsG1( value )                                                        ||
+        isBlsG2( value )                                                        ||
+        isBlsResult( value )
+    );
 }
 
 export function eqConstValue( a: ConstValue, b: ConstValue ): boolean
@@ -75,6 +85,11 @@ export function eqConstValue( a: ConstValue, b: ConstValue ): boolean
         typeof b === "boolean" &&
         (a === b)
     );
+
+    if( isBlsG1( a ) ) return isBlsG1( b ) && bls12_381_G1_equal( a, b );
+    if( isBlsG2( a ) ) return isBlsG2( b ) && bls12_381_G2_equal( a, b );
+    if( isBlsResult( a ) ) return isBlsResult( b ) && bls12_381_eqMlResult( a, b );
+
     if( isData(a) ) return (
         isData( b ) && eqData( a, b )
     );
@@ -104,7 +119,7 @@ export function inferConstTypeFromConstValue( val: ConstValue ): (ConstType | un
     assert(
         isConstValue( val ),
         "'inferConstTypeFromConstValue' expects a valid 'ConstValue' type, input was: " + val
-    )
+    );
 
     if( val === undefined ) return constT.unit;
     
@@ -115,6 +130,10 @@ export function inferConstTypeFromConstValue( val: ConstValue ): (ConstType | un
     if( typeof val === "string" ) return constT.str;
 
     if( typeof val === "boolean" ) return constT.bool;
+
+    if( isBlsG1( val ) ) return constT.bls12_381_G1_element;
+    if( isBlsG2( val ) ) return constT.bls12_381_G2_element;
+    if( isBlsResult( val ) ) return constT.bls12_381_MlResult;
     
     if( Array.isArray( val ) )
     {
@@ -208,6 +227,9 @@ export function canConstValueBeOfConstType( val: Readonly<ConstValue>, ty: Reado
     if( constTypeEq( ty, constT.data ) )        return val === undefined ? false : isData( val );
     if( constTypeEq( ty, constT.int ) )         return isConstValueInt( val );
     if( constTypeEq( ty, constT.str ) )         return typeof val === "string";
+    if( constTypeEq( ty, constT.bls12_381_G1_element ) )         return isBlsG1( val );
+    if( constTypeEq( ty, constT.bls12_381_G2_element ) )         return isBlsG2( val );
+    if( constTypeEq( ty, constT.bls12_381_MlResult ) )           return isBlsResult( val );
     if( ty[ 0 ] === ConstTyTag.list )
         return (
             Array.isArray( val ) && 
@@ -229,7 +251,6 @@ export function canConstValueBeOfConstType( val: Readonly<ConstValue>, ty: Reado
         "'canConstValueBeOfConstType' did not match any type tag"
     );
 }
-
 
 export function isConstValueList( val: any ): val is ConstValueList
 {
@@ -258,8 +279,6 @@ export function isConstValueList( val: any ): val is ConstValueList
 
     if( firstElemTy === undefined )
     {
-        
-        
         return isArrayOfEmptyArray( val );
     }
 

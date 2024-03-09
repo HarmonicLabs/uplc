@@ -13,6 +13,10 @@ import { ByteString } from "@harmoniclabs/bytestring";
 import { Pair } from "@harmoniclabs/pair";
 import { isData, dataToCbor } from "@harmoniclabs/plutus-data";
 import { assert } from "../utils/assert";
+import { Constr } from "../UPLCTerms/Constr";
+import { Case } from "../UPLCTerms/Case";
+import { bls12_381_G1_compress, bls12_381_G2_compress, isBlsG1, isBlsG2, isBlsResult } from "@harmoniclabs/crypto";
+import { toHex } from "@harmoniclabs/uint8array-utils";
 
 export type UPLCTerm 
     = UPLCVar
@@ -22,7 +26,9 @@ export type UPLCTerm
     | UPLCConst
     | Force
     | ErrorUPLC
-    | Builtin;
+    | Builtin
+    | Constr
+    | Case;
     
 /**
  * @deprecated alias for `UPLCTerm` use that instead
@@ -36,18 +42,18 @@ export type PureUPLCTerm = UPLCTerm;
  */
 export function isUPLCTerm( t: object ): t is UPLCTerm
 {
-    const proto = Object.getPrototypeOf( t );
-
     // only strict instances
     return (
-        proto === UPLCVar.prototype        ||
-        proto === Delay.prototype          ||
-        proto === Lambda.prototype         ||
-        proto === Application.prototype    ||
-        proto === UPLCConst.prototype      ||
-        proto === Force.prototype          ||
-        proto === ErrorUPLC.prototype      ||
-        proto === Builtin.prototype
+        t instanceof UPLCVar        ||
+        t instanceof Delay          ||
+        t instanceof Lambda         ||
+        t instanceof Application    ||
+        t instanceof UPLCConst      ||
+        t instanceof Force          ||
+        t instanceof ErrorUPLC      ||
+        t instanceof Builtin        ||
+        t instanceof Constr         ||
+        t instanceof Case
     );
 }
 
@@ -68,58 +74,69 @@ export function isPureUPLCTerm( t: UPLCTerm ): t is PureUPLCTerm
     if( t instanceof Force )        return isPureUPLCTerm( t.termToForce );
     if( t instanceof ErrorUPLC )    return true;
     if( t instanceof Builtin )      return true;
+    if( t instanceof Constr )       return t.terms.every( isPureUPLCTerm );
+    if( t instanceof Case )         return isPureUPLCTerm( t.constrTerm ) && t.continuations.every( isPureUPLCTerm );
 
     return false;
 }
 
+function _isClosedTerm( maxDeBruijn: bigint, t: UPLCTerm ): boolean
+{
+    assert(
+        isUPLCTerm( t ),
+        "'isClosedTerm' functions only works on **raw** UPLCTerms"
+    );
+
+    if( t instanceof UPLCVar )
+        // deBruijn variables are 0 indexed (as arrays)
+        return maxDeBruijn > t.deBruijn;
+
+    else if( t instanceof Delay )
+        return _isClosedTerm( maxDeBruijn , t.delayedTerm );
+    
+    else if( t instanceof Lambda )
+        // increment max debruijn
+        return _isClosedTerm( maxDeBruijn + BigInt( 1 ), t.body );
+
+    else if( t instanceof Application )
+        return _isClosedTerm( maxDeBruijn , t.funcTerm ) && _isClosedTerm( maxDeBruijn , t.argTerm )
+    
+    else if( t instanceof UPLCConst )
+        // `UPLCConst` has no variables in it, ence always closed
+        return true;
+    
+    else if( t instanceof Force )
+        return _isClosedTerm( maxDeBruijn, t.termToForce );
+
+    else if( t instanceof ErrorUPLC )
+        // `ErrorUPLC` has no variables in it, ence always closed
+        return true;
+
+    else if( t instanceof Builtin )
+        // builtin per-se is just the function (ence a valid value),
+        // arguments are passed using the `Apply` Term
+        // so it is the `t instanceof Apply` case job
+        // to be sure the arguments are closed
+        return true;
+
+    else if( t instanceof Constr )
+        return t.terms.every( term => _isClosedTerm( maxDeBruijn, term ) );
+
+    else if( t instanceof Case )
+        return (
+            _isClosedTerm( maxDeBruijn, t.constrTerm ) &&
+            t.continuations.every( term => _isClosedTerm( maxDeBruijn, term ) )
+        );
+        
+    else
+        throw new Error(
+            "unexpected execution flow in 'isClodeTerm'; all possibilieties should have already been handled; input term is: " + (t as any).toString()
+        )
+
+}
 export function isClosedTerm( term: UPLCTerm ): boolean
 {
-    function _isClosedTerm( maxDeBruijn: bigint, t: UPLCTerm ): boolean
-    {
-        assert(
-            isUPLCTerm( t ),
-            "'isClosedTerm' functions only works on **raw** UPLCTerms"
-        );
-
-        if( t instanceof UPLCVar )
-            // deBruijn variables are 0 indexed (as arrays)
-            return maxDeBruijn > t.deBruijn;
-
-        else if( t instanceof Delay )
-            return _isClosedTerm( maxDeBruijn , t.delayedTerm );
-        
-        else if( t instanceof Lambda )
-            // increment max debruijn
-            return _isClosedTerm( maxDeBruijn + BigInt( 1 ), t.body );
-
-        else if( t instanceof Application )
-            return _isClosedTerm( maxDeBruijn , t.funcTerm ) && _isClosedTerm( maxDeBruijn , t.argTerm )
-        
-        else if( t instanceof UPLCConst )
-            // `UPLCConst` has no variables in it, ence always closed
-            return true;
-        
-        else if( t instanceof Force )
-            return _isClosedTerm( maxDeBruijn, t.termToForce );
-
-        else if( t instanceof ErrorUPLC )
-            // `ErrorUPLC` has no variables in it, ence always closed
-            return true;
-
-        else if( t instanceof Builtin )
-            // builtin per-se is just the function (ence a valid value),
-            // arguments are passed using the `Apply` Term
-            // so it is the `t instanceof Apply` case job
-            // to be sure the arguments are closed
-            return true;
-        else
-            throw new Error(
-                "unexpected execution flow in 'isClodeTerm'; all possibilieties should have already been handled; input term is: " + (t as any).toString()
-            )
-
-    }
-
-    return _isClosedTerm( BigInt( 0 ) , term );
+    return _isClosedTerm( BigInt( 0 ), term );
 }
 
 export function showUPLCConstValue( v: ConstValue ): string
@@ -130,6 +147,11 @@ export function showUPLCConstValue( v: ConstValue ): string
     if( typeof v === "boolean" )  return v ? "True" : "False";
     if( v instanceof ByteString ) return "#" + v.toString();
     if( isData( v ) ) return "#" + dataToCbor( v ).toString();
+
+    if( isBlsG1( v ) ) return `0x${toHex(bls12_381_G1_compress( v ))}`;
+    if( isBlsG2( v ) ) return `0x${toHex(bls12_381_G2_compress( v ))}`;
+    if( isBlsResult( v ) ) return JSON.stringify( v, ( k, v ) => typeof v === "bigint" ? v.toString() : v );
+
     if( Array.isArray( v ) ) return "[" + v.map( showUPLCConstValue ).join(',') + "]";
     if( v instanceof Pair ) return `(${showUPLCConstValue(v.fst)},${showUPLCConstValue(v.snd)})`;
     
@@ -190,6 +212,14 @@ function _showUPLC( t: UPLCTerm, dbn: number ): string
 
         return "(force ".repeat( nForces ) +`(builtin ${builtinTagToString( t.tag )})` + ')'.repeat( nForces )
     }
+    if( t instanceof Constr )
+    {
+        return "(constr " + t.index.toString() + " [" + t.terms.map( term => _showUPLC( term, dbn ) ).join(",") + "])";
+    }
+    if( t instanceof Case )
+    {
+        return "(case " + _showUPLC( t.constrTerm, dbn ) + " [" + t.continuations.map( term => _showUPLC( term, dbn ) ).join(",") + "])";
+    }
     
     return "";
 }
@@ -235,6 +265,24 @@ export function prettyUPLC( term: UPLCTerm, _indent: number = 2 ): string
     
             return indent + "(force ".repeat( nForces ) +`(builtin ${builtinTagToString( t.tag )})` + ')'.repeat( nForces )
         }
+        if( t instanceof Constr )
+        {
+            const nextIndent = indent + indentStr;
+            return indent + "(constr " + t.index.toString() + "\n" +
+                nextIndent + "[" + t.terms.map( term => _prettyUPLC( term, dbn, depth + 2 ) ).join(",\n") + 
+                nextIndent + "]\n" +
+                indent + ")";
+        }
+        if( t instanceof Case )
+        {
+            const nextIndent = indent + indentStr;
+            return indent + "(case\n" +
+            _prettyUPLC( t.constrTerm, dbn, depth + 1 ) + "\n" +
+            nextIndent + "[" +
+            t.continuations.map( term => _prettyUPLC( term, dbn, depth + 2 ) ).join(",\n") +
+            nextIndent + "]\n" +
+            indent + ")";
+        }
         
         return "";
     }
@@ -265,6 +313,8 @@ export function hasAnyRefsInTerm( varDeBruijn: number | bigint, t: UPLCTerm ): b
     if( t instanceof Force )        return hasAnyRefsInTerm( dbn, t.termToForce );
     if( t instanceof ErrorUPLC )    return false;
     if( t instanceof Builtin )      return false;
+    if( t instanceof Constr )       return t.terms.some( term => hasAnyRefsInTerm( dbn, term ) );
+    if( t instanceof Case )         return hasAnyRefsInTerm( dbn, t.constrTerm ) || t.continuations.some( term => hasAnyRefsInTerm( dbn, term ) );
 
     throw new Error(
         "'hasAnyRefsInTerm' did not matched any possible 'UPLCTerm' constructor"
@@ -300,8 +350,31 @@ export function hasMultipleRefsInTerm( varDeBruijn: number | bigint, t: Readonly
     if( t instanceof ErrorUPLC )    return false;
     if( t instanceof Builtin )      return false;
 
+    if( t instanceof Constr ) return termArrayHasManyRefs( dbn, t.terms );
+    if( t instanceof Case )
+    {
+        return (
+            (
+                hasAnyRefsInTerm( dbn, t.constrTerm ) &&
+                t.continuations.some( term => hasAnyRefsInTerm( dbn, term ) )
+            ) ||
+            hasMultipleRefsInTerm( dbn, t.constrTerm ) ||
+            termArrayHasManyRefs( dbn, t.continuations )
+        );
+    }
+
     throw new Error(
         "getUPLCVarRefsInTerm did not matched any possible 'UPLCTerm' constructor"
+    );
+}
+
+function termArrayHasManyRefs( dbn: bigint, terms: UPLCTerm[] ): boolean
+{
+    const idx = terms.findIndex( term => hasAnyRefsInTerm( dbn, term ) );
+    if( idx < 0 ) return false; // no refs at all;
+    return (
+        terms.slice( idx + 1 ).some( term => hasAnyRefsInTerm( dbn, term ) ) ||
+        terms.some( term => hasMultipleRefsInTerm( dbn, term ) )
     );
 }
 
@@ -313,26 +386,31 @@ export function hasMultipleRefsInTerm( varDeBruijn: number | bigint, t: Readonly
  */
 export function getUPLCVarRefsInTerm( term: UPLCTerm, varDeBruijn: number | bigint = 0 ): number
 {
-    function _getUPLCVarRefsInTerm( dbn: bigint, t: UPLCTerm, countedUntilNow: number ): number
-    {
-        assert(
-            isUPLCTerm( t ),
-            "'getUPLCVarRefsInTerm' expects an UPLCTerms"
-        );
-
-        if( t instanceof UPLCVar )      return countedUntilNow + (t.deBruijn === dbn ? 1 : 0);
-        if( t instanceof Delay )        return _getUPLCVarRefsInTerm( dbn, t.delayedTerm, countedUntilNow );
-        if( t instanceof Lambda )       return _getUPLCVarRefsInTerm( dbn + BigInt( 1 ) , t.body, countedUntilNow );
-        if( t instanceof Application )  return _getUPLCVarRefsInTerm( dbn , t.funcTerm, countedUntilNow ) + _getUPLCVarRefsInTerm( dbn , t.argTerm, countedUntilNow );
-        if( t instanceof UPLCConst )    return countedUntilNow;
-        if( t instanceof Force )        return _getUPLCVarRefsInTerm( dbn, t.termToForce, countedUntilNow );
-        if( t instanceof ErrorUPLC )    return countedUntilNow;
-        if( t instanceof Builtin )      return countedUntilNow;
-
-        throw new Error(
-            "getUPLCVarRefsInTerm did not matched any possible 'UPLCTerm' constructor"
-        );
-    }
-
     return _getUPLCVarRefsInTerm( BigInt( varDeBruijn ), term, 0 );
+}
+function _getUPLCVarRefsInTerm( dbn: bigint, t: UPLCTerm, countedUntilNow: number ): number
+{
+    assert(
+        isUPLCTerm( t ),
+        "'getUPLCVarRefsInTerm' expects an UPLCTerms"
+    );
+
+    if( t instanceof UPLCVar )      return countedUntilNow + (t.deBruijn === dbn ? 1 : 0);
+    if( t instanceof Delay )        return _getUPLCVarRefsInTerm( dbn, t.delayedTerm, countedUntilNow );
+    if( t instanceof Lambda )       return _getUPLCVarRefsInTerm( dbn + BigInt( 1 ) , t.body, countedUntilNow );
+    if( t instanceof Application )  return _getUPLCVarRefsInTerm( dbn , t.funcTerm, countedUntilNow ) + _getUPLCVarRefsInTerm( dbn , t.argTerm, countedUntilNow );
+    if( t instanceof UPLCConst )    return countedUntilNow;
+    if( t instanceof Force )        return _getUPLCVarRefsInTerm( dbn, t.termToForce, countedUntilNow );
+    if( t instanceof ErrorUPLC )    return countedUntilNow;
+    if( t instanceof Builtin )      return countedUntilNow;
+    if( t instanceof Constr )       return t.terms.reduce(( tot, term ) => _getUPLCVarRefsInTerm( dbn, term, tot ), countedUntilNow );
+    if( t instanceof Case )
+    return t.continuations.reduce(
+        ( tot, term ) => _getUPLCVarRefsInTerm( dbn, term, tot ),
+        _getUPLCVarRefsInTerm( dbn, t.constrTerm, countedUntilNow )
+    );
+
+    throw new Error(
+        "getUPLCVarRefsInTerm did not matched any possible 'UPLCTerm' constructor"
+    );
 }

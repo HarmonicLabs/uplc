@@ -75,7 +75,27 @@ export enum UPLCBuiltinTag {
     // Vasil (Plutus V2)
     serialiseData                   = 51,
     verifyEcdsaSecp256k1Signature   = 52,
-    verifySchnorrSecp256k1Signature = 53
+    verifySchnorrSecp256k1Signature = 53,
+    // Plutus V3
+    bls12_381_G1_add                = 54,
+    bls12_381_G1_neg                = 55,
+    bls12_381_G1_scalarMul          = 56,
+    bls12_381_G1_equal              = 57,
+    bls12_381_G1_hashToGroup        = 58,
+    bls12_381_G1_compress           = 59,
+    bls12_381_G1_uncompress         = 60,
+    bls12_381_G2_add                = 61,
+    bls12_381_G2_neg                = 62,
+    bls12_381_G2_scalarMul          = 63,
+    bls12_381_G2_equal              = 64,
+    bls12_381_G2_hashToGroup        = 65,
+    bls12_381_G2_compress           = 66,
+    bls12_381_G2_uncompress         = 67,
+    bls12_381_millerLoop            = 68,
+    bls12_381_mulMlResult           = 69,
+    bls12_381_finalVerify           = 70,
+    keccak_256                      = 71,
+    blake2b_224                     = 72
 }
 
 
@@ -84,7 +104,7 @@ export function isUPLCBuiltinTag( tag: UPLCBuiltinTag | UPLCBuiltinTagNumber ): 
     return (
         Math.round( Math.abs( tag ) ) === tag // tag is a non-negative integer
         &&
-        (tag >= 0 && tag <= 53)
+        (tag >= 0 && tag <= 72)
     );
 }
 
@@ -207,6 +227,25 @@ export function builtinTagToString( tag: UPLCBuiltinTag ): string
             case UPLCBuiltinTag.serialiseData:                      return "serialiseData";
             case UPLCBuiltinTag.verifyEcdsaSecp256k1Signature:      return "verifyEcdsaSecp256k1Signature";
             case UPLCBuiltinTag.verifySchnorrSecp256k1Signature:    return "verifySchnorrSecp256k1Signature";
+            case UPLCBuiltinTag.bls12_381_G1_add        :           return "bls12_381_G1_add";
+            case UPLCBuiltinTag.bls12_381_G1_neg        :           return "bls12_381_G1_neg";
+            case UPLCBuiltinTag.bls12_381_G1_scalarMul  :           return "bls12_381_G1_scalarMul";
+            case UPLCBuiltinTag.bls12_381_G1_equal      :           return "bls12_381_G1_equal";
+            case UPLCBuiltinTag.bls12_381_G1_hashToGroup:           return "bls12_381_G1_hashToGroup";
+            case UPLCBuiltinTag.bls12_381_G1_compress   :           return "bls12_381_G1_compress";
+            case UPLCBuiltinTag.bls12_381_G1_uncompress :           return "bls12_381_G1_uncompress";
+            case UPLCBuiltinTag.bls12_381_G2_add        :           return "bls12_381_G2_add";
+            case UPLCBuiltinTag.bls12_381_G2_neg        :           return "bls12_381_G2_neg";
+            case UPLCBuiltinTag.bls12_381_G2_scalarMul  :           return "bls12_381_G2_scalarMul";
+            case UPLCBuiltinTag.bls12_381_G2_equal      :           return "bls12_381_G2_equal";
+            case UPLCBuiltinTag.bls12_381_G2_hashToGroup:           return "bls12_381_G2_hashToGroup";
+            case UPLCBuiltinTag.bls12_381_G2_compress   :           return "bls12_381_G2_compress";
+            case UPLCBuiltinTag.bls12_381_G2_uncompress :           return "bls12_381_G2_uncompress";
+            case UPLCBuiltinTag.bls12_381_millerLoop    :           return "bls12_381_millerLoop";
+            case UPLCBuiltinTag.bls12_381_mulMlResult   :           return "bls12_381_mulMlResult";
+            case UPLCBuiltinTag.bls12_381_finalVerify   :           return "bls12_381_finalVerify";
+            case UPLCBuiltinTag.keccak_256              :           return "keccak_256";
+            case UPLCBuiltinTag.blake2b_224             :           return "blake2b_224";
 
             
             default:
@@ -274,6 +313,25 @@ export function builtinTagFromString( tag: string ): UPLCBuiltinTag
             case "serialiseData":                      return UPLCBuiltinTag.serialiseData;
             case "verifyEcdsaSecp256k1Signature":      return UPLCBuiltinTag.verifyEcdsaSecp256k1Signature;
             case "verifySchnorrSecp256k1Signature":    return UPLCBuiltinTag.verifySchnorrSecp256k1Signature;
+            case "bls12_381_G1_add"   :                return UPLCBuiltinTag.bls12_381_G1_add;
+            case "bls12_381_G1_neg"   :                return UPLCBuiltinTag.bls12_381_G1_neg;
+            case "bls12_381_G1_scalarMul":             return UPLCBuiltinTag.bls12_381_G1_scalarMul;
+            case "bls12_381_G1_equal":                 return UPLCBuiltinTag.bls12_381_G1_equal;
+            case "bls12_381_G1_hashToGroup":           return UPLCBuiltinTag.bls12_381_G1_hashToGroup;
+            case "bls12_381_G1_compress":              return UPLCBuiltinTag.bls12_381_G1_compress;
+            case "bls12_381_G1_uncompress":            return UPLCBuiltinTag.bls12_381_G1_uncompress;
+            case "bls12_381_G2_add":                   return UPLCBuiltinTag.bls12_381_G2_add;
+            case "bls12_381_G2_neg":                   return UPLCBuiltinTag.bls12_381_G2_neg;
+            case "bls12_381_G2_scalarMul":             return UPLCBuiltinTag.bls12_381_G2_scalarMul;
+            case "bls12_381_G2_equal":                 return UPLCBuiltinTag.bls12_381_G2_equal;
+            case "bls12_381_G2_hashToGroup":           return UPLCBuiltinTag.bls12_381_G2_hashToGroup;
+            case "bls12_381_G2_compress":              return UPLCBuiltinTag.bls12_381_G2_compress;
+            case "bls12_381_G2_uncompress":            return UPLCBuiltinTag.bls12_381_G2_uncompress;
+            case "bls12_381_millerLoop":               return UPLCBuiltinTag.bls12_381_millerLoop;
+            case "bls12_381_mulMlResult":              return UPLCBuiltinTag.bls12_381_mulMlResult;
+            case "bls12_381_finalVerify":              return UPLCBuiltinTag.bls12_381_finalVerify;
+            case "keccak_256":                         return UPLCBuiltinTag.keccak_256;
+            case "blake2b_224":                        return UPLCBuiltinTag.blake2b_224;
 
             
             default:

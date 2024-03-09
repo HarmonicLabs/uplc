@@ -16,4 +16,17 @@ export class UPLCVersion
         this._minor = forceBigUInt( minor );
         this._patch = forceBigUInt( patch );
     }
+
+    isV3Friendly(): boolean
+    {
+        // ^1.1.0 || >= 2.*.*
+        return this.major === BigInt(1) ?
+            this.minor >= 1 :
+            this.major >= 2;
+    }
+
+    toString(): string
+    {
+        return `${this.major}.${this.minor}.${this.patch}`;
+    }
 }

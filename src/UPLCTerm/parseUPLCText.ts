@@ -3,6 +3,8 @@ import { Application, Builtin, ConstTyTag, ConstType, ConstValue, ConstValueList
 import { UPLCTerm } from "./UPLCTerm";
 import { dataFromCbor } from "@harmoniclabs/plutus-data";
 import { Pair } from "@harmoniclabs/pair";
+import { bls12_381_G1_uncompress, bls12_381_G2_uncompress } from "@harmoniclabs/crypto";
+import { fromHex } from "@harmoniclabs/uint8array-utils";
 
 
 /*
@@ -178,11 +180,11 @@ export function _parseUPLCText(
 
         if( str.startsWith("con") )
         {
-            str = str.slice(3).trimStart();
+            sliceTrimIncr( 3 );
 
             const t = parseConstType( str );
 
-            str = str.slice( t.offset ).trimStart();
+            sliceTrimIncr( t.offset );
 
             const v = parseConstValueOfType( str, t.type );
 
@@ -307,6 +309,33 @@ export function parseConstValueOfType(
             offset
         };
     }
+    if( constTypeEq( t, constT.bls12_381_G1_element ) )
+    {
+        sliceTrimIncr( str.indexOf( "0x" ) + 2 );
+        const value = bls12_381_G1_uncompress(
+            fromHex(
+                str.slice( 0, 96 )// 48 bytes; 96 hex chars
+            )
+        );
+        sliceTrimIncr( 96 );
+        return { value, offset };
+    }
+    if( constTypeEq( t, constT.bls12_381_G2_element ) )
+    {
+        sliceTrimIncr( str.indexOf( "0x" ) + 2 );
+        const value = bls12_381_G2_uncompress(
+            fromHex(
+                str.slice( 0, 192 )// 96 bytes; 192 hex chars
+            )
+        );
+        sliceTrimIncr( 192 );
+        return { value, offset };
+    }
+    if( constTypeEq( t, constT.bls12_381_MlResult ) )
+    {
+        throw new Error("bls12_381_MlResult const type not supported");
+    }
+
     if( t[0] === ConstTyTag.pair )
     {
         sliceTrimIncr( str.indexOf("(") + 1 );
@@ -349,7 +378,6 @@ export function parseConstValueOfType(
             offset
         };
     }
-
 
     throw new Error("unknown const type")
 }
@@ -414,6 +442,25 @@ export function parseConstType( str: string ): { type: ConstType, offset: number
             offset
         };
     }
+
+    if( str.startsWith("bls12_381_G1_element") )
+    {
+        sliceTrimIncr("bls12_381_G1_element".length);
+        return {
+            type: constT.bls12_381_G1_element,
+            offset
+        };
+    }
+    if( str.startsWith("bls12_381_G2_element") )
+    {
+        sliceTrimIncr("bls12_381_G2_element".length);
+        return {
+            type: constT.bls12_381_G2_element,
+            offset
+        };
+    }
+    if( str.startsWith("bls12_381_MlResult") )
+    throw new Error("bls12_381_MlResult const not supported in textual UPLC");
 
     if( str.startsWith("list") )
     {

@@ -224,7 +224,7 @@ describe("parseUPLCText", () => {
 
         const showed = showUPLC( deserialized );
 
-        console.log( showed );
+        // console.log( showed );
 
         expect( showed ).toEqual( source );
     })

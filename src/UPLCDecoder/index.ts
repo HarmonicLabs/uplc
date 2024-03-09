@@ -1,6 +1,6 @@
 import { UPLCProgram } from "../UPLCProgram/UPLCProgram";
 import { UPLCVersion } from "../UPLCProgram/UPLCVersion";
-import { PureUPLCTerm, showConstType, showUPLCConstValue } from "../UPLCTerm/UPLCTerm";
+import { PureUPLCTerm, UPLCTerm, showConstType, showUPLCConstValue } from "../UPLCTerm/UPLCTerm";
 import { Application } from "../UPLCTerms/Application";
 import { Builtin } from "../UPLCTerms/Builtin/Builtin";
 import { builtinTagToString } from "../UPLCTerms/Builtin/UPLCBuiltinTag";
@@ -19,6 +19,9 @@ import UPLCFlatUtils from "../utils/UPLCFlatUtils";
 import { bigintFromBuffer } from "@harmoniclabs/bigint-utils";
 import { dataFromCbor } from "@harmoniclabs/plutus-data";
 import { Pair } from "@harmoniclabs/pair";
+import { UPLCTermTag } from "../UPLCTerm/UPLCTermTag";
+import { Constr } from "../UPLCTerms/Constr";
+import { Case } from "../UPLCTerms/Case";
 
 export type SerializedScriptFormat = "flat" | "cbor"
 
@@ -76,7 +79,14 @@ export class UPLCDecoder
         let currPtr: number = 0;
         const nBytes = serializedScript.length;
         const scriptBits = "0000000" + bigintFromBuffer( serializedScript ).toString(2);
-        const version: [ number, number, number ] = [1,0,0];
+        /**
+         * dependencies:
+         * - currPtr
+         * - nBytes
+         * - serializedScript
+         */
+        const version: UPLCVersion = new UPLCVersion(readUInt(), readUInt(), readUInt());
+        const isV3Friendly = version.isV3Friendly();
 
         let currDbn = 0;
 
@@ -108,7 +118,11 @@ export class UPLCDecoder
         let partialUPLC = "";
         // -------------------------------------------------------------------------------- //
 
-
+        /**
+         * dependencies:
+         * - currPtr
+         * - nBytes
+         */
         function currByteIndex(): number
         {
             const idx = Math.floor( currPtr / 8 );
@@ -116,6 +130,12 @@ export class UPLCDecoder
             return idx;
         }
 
+        /**
+         * dependencies:
+         * - currPtr
+         * - nBytes
+         * - serializedScript
+         */
         function currByte(): number
         {
             const byte = serializedScript.at( currByteIndex() );
@@ -150,41 +170,36 @@ export class UPLCDecoder
             }
         }
 
-        function readNBits( n: number, shouldLogResult: boolean = false ): bigint
-        {
-            const logResult = 
-                (debugLogs || shouldLogResult) ?
-                ( result: bigint ): bigint =>
-                {
-                    return result;
-                }: 
-                (x: any) => x 
-            ;
 
-            if( n <= 0 ) return logResult( BigInt(0) );
+        /**
+         * dependencies:
+         * - currPtr
+         * - nBytes
+         * - serializedScript
+         */
+        function readNBits( n: number ): bigint
+        {
+            if( n <= 0 ) return BigInt(0);
 
             const currB = currByte();
             const inBytePtr = currPtr % 8;
 
             if( n === 1 ){
                 incrementPtrBy( 1 );
-                return logResult( 
-                    BigInt(nthBitOfByte( inBytePtr as any, currB ))
-                );
+                return BigInt(
+                    nthBitOfByte( inBytePtr as any, currB )
+                )
             }
 
             const missingBitsToByte = 8 - inBytePtr;
 
             const shift = missingBitsToByte - n;
 
-
             if( n <= missingBitsToByte )
             {
                 incrementPtrBy( n );
-                return logResult( 
-                    BigInt(
-                        (currB & ( getByteMask( n as any ) << shift )) >> shift
-                    )
+                return BigInt(
+                    (currB & ( getByteMask( n as any ) << shift )) >> shift
                 );
             }
 
@@ -202,10 +217,8 @@ export class UPLCDecoder
             }
             missingBitsToRead = missingBitsToRead - (nWholeBytes * 8);
 
-            if( missingBitsToRead === 0 ) return logResult( result );
-            return logResult( 
-                ( result << BigInt( missingBitsToRead ) ) | readNBits(missingBitsToRead, false)
-            );
+            if( missingBitsToRead === 0 ) return result;
+            return ( result << BigInt( missingBitsToRead ) ) | readNBits( missingBitsToRead );
         }
 
         function readPadding(): void
@@ -216,6 +229,12 @@ export class UPLCDecoder
             )
         }
 
+        /**
+         * dependencies:
+         * - currPtr
+         * - nBytes
+         * - serializedScript
+         */
         function readUInt(): bigint
         {
             let n = BigInt(0);
@@ -236,52 +255,51 @@ export class UPLCDecoder
             return UPLCFlatUtils.unzigzagBigint( readUInt() );
         }
 
-        function readTerm(): PureUPLCTerm
+        function readTerm(): UPLCTerm
         {
             // console.log( "left to read: " + serializedScript.subarray( currByteIndex() ).toString("hex") );
-
             logState();
 
-            const tag = Number( readNBits(4) );
+            const tag = Number( readNBits(4) ) as UPLCTermTag;
 
             switch( tag )
             {
-                        // serialised debruijn starts form 1;
-                        // plu-ts debruijn starts from 0
-                case 0:
+                // serialised debruijn starts form 1;
+                // plu-ts debruijn starts from 0
+                case UPLCTermTag.Var:
                     const _dbn = readUInt();
                     const dbn = Number( _dbn );
                     const idx = currDbn - (dbn - 1);
                     partialUPLC += vars[ idx ] ?? `(${idx.toString()})`;
                     return new UPLCVar( _dbn - BigInt(1) );
-                case 1:
+                case UPLCTermTag.Delay:
                     partialUPLC+= "(delay ";
                     const delayed = readTerm();
                     partialUPLC += ")";
                     return new Delay( delayed );
-                case 2:
+                case UPLCTermTag.Lambda:
                     partialUPLC += "(lam " + vars[ currDbn ] + ' ';
                     currDbn++;
                     const lamBody = readTerm();
                     currDbn--;
                     partialUPLC += ")";
                     return new Lambda( lamBody );
-                case 3:
+                case UPLCTermTag.Application:
                     partialUPLC += '[';
                     const appFn  = readTerm();
                     partialUPLC += ' ';
                     const appArg = readTerm();
                     partialUPLC += ']';
                     return new Application( appFn, appArg );
-                case 4: return readConst();
-                case 5:
+                case UPLCTermTag.Const: return readConst();
+                case UPLCTermTag.Force:
                     partialUPLC += "(force ";
                     const forced = readTerm();
                     partialUPLC += ')';
                     if( forced instanceof Builtin ) return forced;
                     if( forced instanceof Force && forced.termToForce instanceof Builtin ) return forced.termToForce;
                     return new Force( forced );
-                case 6:
+                case UPLCTermTag.Error:
                     partialUPLC += "(error)";
                     return new ErrorUPLC(
                     //    "error got from deserialization;",
@@ -291,21 +309,62 @@ export class UPLCDecoder
                     //        bitIndex: currPtr
                     //    }
                     );
-                case 7:
+                case UPLCTermTag.Builtin:
                     const bn_tag = Number( readNBits(7) );
                     partialUPLC += `(builtin ${builtinTagToString( bn_tag )})`;
                     return new Builtin( bn_tag );
+                case UPLCTermTag.Constr: {
+                    if( !isV3Friendly ) throw new Error(
+                        "found 'constr' node in uplc version " + version.toString() +
+                        "; lowest supported version is 1.1.0"
+                    );
+                    return new Constr(
+                        readUInt(),
+                        readTermList()
+                    )
+                };
+                case UPLCTermTag.Case: {
+                    if( !isV3Friendly ) throw new Error(
+                        "found 'case' node in uplc version " + version.toString() +
+                        "; lowest supported version is 1.1.0"
+                    );
+                    return new Case(
+                        readTerm(),
+                        readTermList()
+                    )
+                };
 
                 default: throw new Error("unknown tag: " + tag + "; partialUPLC == " + partialUPLC );
             }
+        }
+
+        function readTermList(): UPLCTerm[]
+        {
+            const list: UPLCTerm[] = [];
+            
+            for(
+                let head = Number( readNBits(1) );
+                head !== 0;
+                head = Number( readNBits(1) )
+            )
+            {
+                list.push( readTerm() );
+            }
+
+            return list;
         }
 
         function readConst(): UPLCConst
         {
             logState();
             const constTy = readConstTy();
-            const val = 
-                readConstValueOfType( constTy );
+            if(
+                constTypeEq( constTy, constT.bls12_381_G1_element ) ||
+                constTypeEq( constTy, constT.bls12_381_G2_element ) ||
+                constTypeEq( constTy, constT.bls12_381_MlResult )
+            ) throw new Error("bls constants are not supported in serialized UPLC");
+            
+            const val = readConstValueOfType( constTy );
 
             partialUPLC += `( con ${showConstType( constTy )} ${ showUPLCConstValue( val ) } )`;
 
@@ -381,16 +440,6 @@ export class UPLCDecoder
             {
                 let bytes = (readConstValueOfType( constT.byteStr ) as ByteString).toBuffer();
 
-                // data > 64 bytes encoded as indefinite
-                if( 
-                    bytes[0] === 0x5f && 
-                    bytes.length > (64 + 2) 
-                )
-                {
-                    // Cbor.parse will parse the indefinite length bytes as a single buffer
-                    bytes = (Cbor.parse( bytes ) as CborBytes).buffer;
-                }
-
                 return dataFromCbor( bytes );
             }
             if( constTypeEq( t, constT.bool ) ) return (Number(readNBits(1)) === 1);
@@ -430,7 +479,7 @@ export class UPLCDecoder
         }
 
         return new UPLCProgram(
-            new UPLCVersion(readUInt(), readUInt(), readUInt()),
+            version,
             readTerm()
         );
     }

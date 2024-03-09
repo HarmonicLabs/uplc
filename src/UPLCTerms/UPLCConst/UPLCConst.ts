@@ -5,6 +5,7 @@ import { Data } from "@harmoniclabs/plutus-data";
 import { ConstTyTag, ConstType, constPairTypeUtils, constT, constTypeEq, constTypeToStirng, isWellFormedConstType } from "./ConstType";
 import { ConstValue, canConstValueBeOfConstType, ConstValueList } from "./ConstValue";
 import { assert } from "../../utils/assert";
+import { BlsG1, BlsG2, BlsResult } from "@harmoniclabs/crypto";
 
 
 export class UPLCConst
@@ -15,7 +16,6 @@ export class UPLCConst
     };
 
     private _type: ConstType
-
     get type(): ConstType
     {
         // clone
@@ -23,7 +23,6 @@ export class UPLCConst
     }
 
     private _value: ConstValue
-
     get value(): ConstValue
     {
         return this._value;
@@ -37,6 +36,9 @@ export class UPLCConst
     constructor( type: ConstType, value: ConstValueList )
     constructor( type: ConstType, value: Pair< ConstValue, ConstValue > )
     constructor( type: ConstType, value: Data )
+    constructor( type: ConstType, value: BlsG1 )
+    constructor( type: ConstType, value: BlsG2 )
+    constructor( type: ConstType, value: BlsResult )
     constructor(
         typeTag: ConstType,
         value: ConstValue
@@ -56,13 +58,10 @@ export class UPLCConst
         if( constTypeEq( typeTag, constT.int ) )
         value = BigInt( value as any );
 
-
         if( constTypeEq( typeTag, constT.listOf( constT.int ) ) )
         value = ( value as number[] ).map( n => BigInt( n ) );
 
-        if(
-            typeTag[0] === ConstTyTag.pair
-        )
+        if( typeTag[0] === ConstTyTag.pair )
         {
             if(
                 constTypeEq(
@@ -79,7 +78,6 @@ export class UPLCConst
                 )
             )
             (value as Pair<any,any>).snd = BigInt( (value as Pair<any,any>).snd );
-            
         }
         
         this._type = typeTag;
@@ -140,5 +138,20 @@ export class UPLCConst
     static data( data: Data ): UPLCConst
     {
         return new UPLCConst( constT.data, data );
+    }
+
+    static bls12_381_G1_element( g1: BlsG1 ): UPLCConst
+    {
+        return new UPLCConst( constT.bls12_381_G1_element, g1 );
+    }
+
+    static bls12_381_G2_element( g2: BlsG2 ): UPLCConst
+    {
+        return new UPLCConst( constT.bls12_381_G2_element, g2 );
+    }
+
+    static bls12_381_MlResult( mlResult: BlsResult ): UPLCConst
+    {
+        return new UPLCConst( constT.bls12_381_MlResult, mlResult );
     }
 }

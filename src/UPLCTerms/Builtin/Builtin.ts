@@ -127,4 +127,24 @@ export class Builtin
     static get serialiseData(): Builtin                   { return new Builtin( UPLCBuiltinTag.serialiseData ) }
     static get verifyEcdsaSecp256k1Signature(): Builtin   { return new Builtin( UPLCBuiltinTag.verifyEcdsaSecp256k1Signature ) }
     static get verifySchnorrSecp256k1Signature(): Builtin { return new Builtin( UPLCBuiltinTag.verifySchnorrSecp256k1Signature ) }
+    // PlutusV3
+    static get bls12_381_G1_add(): Builtin                  { return new Builtin( UPLCBuiltinTag.bls12_381_G1_add ); }
+    static get bls12_381_G1_neg(): Builtin                  { return new Builtin( UPLCBuiltinTag.bls12_381_G1_neg ); }
+    static get bls12_381_G1_scalarMul(): Builtin            { return new Builtin( UPLCBuiltinTag.bls12_381_G1_scalarMul ); }
+    static get bls12_381_G1_equal(): Builtin                { return new Builtin( UPLCBuiltinTag.bls12_381_G1_equal ); }
+    static get bls12_381_G1_hashToGroup(): Builtin          { return new Builtin( UPLCBuiltinTag.bls12_381_G1_hashToGroup ); }
+    static get bls12_381_G1_compress(): Builtin             { return new Builtin( UPLCBuiltinTag.bls12_381_G1_compress ); }
+    static get bls12_381_G1_uncompress(): Builtin           { return new Builtin( UPLCBuiltinTag.bls12_381_G1_uncompress ); }
+    static get bls12_381_G2_add(): Builtin                  { return new Builtin( UPLCBuiltinTag.bls12_381_G2_add ); }
+    static get bls12_381_G2_neg(): Builtin                  { return new Builtin( UPLCBuiltinTag.bls12_381_G2_neg ); }
+    static get bls12_381_G2_scalarMul(): Builtin            { return new Builtin( UPLCBuiltinTag.bls12_381_G2_scalarMul ); }
+    static get bls12_381_G2_equal(): Builtin                { return new Builtin( UPLCBuiltinTag.bls12_381_G2_equal ); }
+    static get bls12_381_G2_hashToGroup(): Builtin          { return new Builtin( UPLCBuiltinTag.bls12_381_G2_hashToGroup ); }
+    static get bls12_381_G2_compress(): Builtin             { return new Builtin( UPLCBuiltinTag.bls12_381_G2_compress ); }
+    static get bls12_381_G2_uncompress(): Builtin           { return new Builtin( UPLCBuiltinTag.bls12_381_G2_uncompress ); }
+    static get bls12_381_millerLoop(): Builtin              { return new Builtin( UPLCBuiltinTag.bls12_381_millerLoop ); }
+    static get bls12_381_mulMlResult(): Builtin             { return new Builtin( UPLCBuiltinTag.bls12_381_mulMlResult ); }
+    static get bls12_381_finalVerify(): Builtin             { return new Builtin( UPLCBuiltinTag.bls12_381_finalVerify ); }
+    static get keccak_256(): Builtin                        { return new Builtin( UPLCBuiltinTag.keccak_256 ); }
+    static get blake2b_224(): Builtin                       { return new Builtin( UPLCBuiltinTag.blake2b_224 ); }
 }

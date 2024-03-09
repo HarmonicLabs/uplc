@@ -11,21 +11,35 @@ export interface RawUPLCSerializationContex
     }
 }
 
+function isV3Friendly( ctx: RawUPLCSerializationContex ): boolean
+{
+    // ^1.1.0 || >= 2.*.*
+    return ctx.version.major === BigInt(1) ?
+        ctx.version.minor >= 1 :
+        ctx.version.major >  1;
+}
+
 export class UPLCSerializationContex
 {
     private _rawCtx: RawUPLCSerializationContex;
-    
+    private _is_v3_friendly: boolean
+    get is_v3_friendly(): boolean
+    {
+        return this._is_v3_friendly;
+    }
+
     constructor( rawCtx: Partial<RawUPLCSerializationContex> )
     {
         this._rawCtx = {
             currLength : 0,
             version : {
                 major: BigInt( 1 ),
-                minor: BigInt( 0 ),
+                minor: BigInt( 1 ),
                 patch: BigInt( 0 )
             },
             ...rawCtx
         };
+        this._is_v3_friendly = isV3Friendly( this._rawCtx );
     }
 
     get currLength(): number
@@ -33,40 +47,27 @@ export class UPLCSerializationContex
         return this._rawCtx.currLength;
     }
 
-    private _updateWith( updatedFields: Partial< RawUPLCSerializationContex > ): void
+    get version(): UPLCVersion
     {
-        this._rawCtx = {
-            ...this._rawCtx,
-            ...updatedFields
-        }
+        return new UPLCVersion(
+            this._rawCtx.version.major,
+            this._rawCtx.version.minor,
+            this._rawCtx.version.patch,
+        );
     }
 
     updateVersion( uplcVersion: UPLCVersion )
     {
-        this._updateWith({
-            version: {
-                major: uplcVersion.major,
-                minor: uplcVersion.minor,
-                patch: uplcVersion.patch,
-            }
-        })
+        this._rawCtx.version = {
+            major: uplcVersion.major,
+            minor: uplcVersion.minor,
+            patch: uplcVersion.patch,
+        };
+        this._is_v3_friendly = isV3Friendly( this._rawCtx );
     }
 
     incrementLengthBy( n: number ): void
     {
-        this._updateWith({
-            currLength: this._rawCtx.currLength + n
-        })
-    }
-
-    /**
-     * @deprecated use ```incrementLengthBy``` as follows instead:
-     * ```ts
-     * ctx.incrementLengthBy( appendedBitStream.length )
-     * ```
-     */
-    updateWithBitStreamAppend( appendedBitStream: Readonly<BitStream> ): void
-    {
-        this.incrementLengthBy( appendedBitStream.length )
+        this._rawCtx.currLength = this._rawCtx.currLength + n; 
     }
 }
