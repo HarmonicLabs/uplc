@@ -147,4 +147,6 @@ export class Builtin
     static get bls12_381_finalVerify(): Builtin             { return new Builtin( UPLCBuiltinTag.bls12_381_finalVerify ); }
     static get keccak_256(): Builtin                        { return new Builtin( UPLCBuiltinTag.keccak_256 ); }
     static get blake2b_224(): Builtin                       { return new Builtin( UPLCBuiltinTag.blake2b_224 ); }
+    static get integerToByteString(): Builtin               { return new Builtin( UPLCBuiltinTag.integerToByteString ); }
+    static get byteStringToInteger(): Builtin               { return new Builtin( UPLCBuiltinTag.byteStringToInteger ); }
 }

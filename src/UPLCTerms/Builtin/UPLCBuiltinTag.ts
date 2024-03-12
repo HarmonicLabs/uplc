@@ -95,7 +95,10 @@ export enum UPLCBuiltinTag {
     bls12_381_mulMlResult           = 69,
     bls12_381_finalVerify           = 70,
     keccak_256                      = 71,
-    blake2b_224                     = 72
+    blake2b_224                     = 72,
+    // bitwise
+    integerToByteString             = 73,
+    byteStringToInteger             = 74
 }
 
 
@@ -104,7 +107,7 @@ export function isUPLCBuiltinTag( tag: UPLCBuiltinTag | UPLCBuiltinTagNumber ): 
     return (
         Math.round( Math.abs( tag ) ) === tag // tag is a non-negative integer
         &&
-        (tag >= 0 && tag <= 72)
+        (tag >= 0 && tag <= 74)
     );
 }
 
@@ -117,8 +120,9 @@ export function getNRequiredForces( tag: UPLCBuiltinTag ): ( 0 | 1 | 2 )
 
     // tags from 0 to 25 and from 37 to 53 are all fixed in type; no forces requred
     if(
-        tag <= 25 || 
-        ( tag >= UPLCBuiltinTag.constrData && tag < 53 )
+        tag <= 25 ||
+        // all fixed type after constrData 
+        tag >= UPLCBuiltinTag.constrData
     ) 
     {
         return 0;
@@ -246,6 +250,8 @@ export function builtinTagToString( tag: UPLCBuiltinTag ): string
             case UPLCBuiltinTag.bls12_381_finalVerify   :           return "bls12_381_finalVerify";
             case UPLCBuiltinTag.keccak_256              :           return "keccak_256";
             case UPLCBuiltinTag.blake2b_224             :           return "blake2b_224";
+            case UPLCBuiltinTag.integerToByteString     :           return "integerToByteString";
+            case UPLCBuiltinTag.byteStringToInteger     :           return "byteStringToInteger";
 
             
             default:
