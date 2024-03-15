@@ -6,3 +6,5 @@ export * from "./Force";
 export * from "./Lambda";
 export * from "./UPLCConst";
 export * from "./UPLCVar";
+export * from "./Constr";
+export * from "./Case";

@@ -210,7 +210,7 @@ export function _parseUPLCText(
     const varDbn = env[ varName ];
     if( varDbn === undefined )
     {
-        console.log( env, `"${varName}"`, Object.keys( env )[0] === varName )
+        // console.log( env, `"${varName}"`, Object.keys( env )[0] === varName )
         throwIllFormed()
     }
 
@@ -290,6 +290,11 @@ export function parseConstValueOfType(
         while( isHexChar( str[ i++ ] ) );
         i--; // last char is not hex
         const hex = str.slice( 0, i );
+
+        // we can handle it but plutus conformance doesn't allow it
+        if( hex.length % 2 === 1 )
+        throw new Error("invalid bytestring value");
+
         sliceTrimIncr( i );
         return {
             value: new ByteString( hex ),
@@ -426,9 +431,11 @@ export function parseConstType( str: string ): { type: ConstType, offset: number
             offset
         };
     }
-    if( str.startsWith("boolean") )
+    if( str.startsWith("bool") )
     {
-        sliceTrimIncr( 7 );
+        if( str.startsWith("boolean") ) sliceTrimIncr( 7 );
+        else sliceTrimIncr( 4 );
+
         return {
             type: constT.bool,
             offset
@@ -523,6 +530,9 @@ export function parseConstType( str: string ): { type: ConstType, offset: number
 
 export function parseUPLCText( str: string ): UPLCTerm
 {
+    str = str.trim();
+    if( str.startsWith("(program" ) )
+    str = str.slice( str.indexOf("(", 1 ), str.length - 1 );
     return _parseUPLCText( str, {}, 0 ).term;
 }
 
