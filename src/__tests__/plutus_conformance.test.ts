@@ -66,7 +66,7 @@ function testDir( path: string )
     // console.log( path );
 }
 
-const base_path = "./src/__tests__/plutus_conformance/term/case";
+const base_path = "./src/__tests__/plutus_conformance";
 
 // skip tests for now
 // for some reason jest goes crazy whitout exiting

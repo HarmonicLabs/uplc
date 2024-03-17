@@ -187,21 +187,23 @@ export function _parseUPLCText(
         if( str.startsWith("case") )
         {
             if( !version.isV3Friendly() )
-            {
-                throw new ErrorUPLC("case uplc node found on program version: " + version.toString() );
-            }
+                throw new Error("case uplc node found on program version: " + version.toString() );
+
             sliceTrimIncr( 4 );
             const closeIdx = indexOfNextUnmatchedParentesis( str );
-            str = str.slice( 0, closeIdx );
+            str = str.slice( 0, closeIdx ).trim();
+            
             const terms: UPLCTerm[] = [];
-            str = str.trim();
             while( str.length > 0 )
             {
                 const { term, offset } = _parseUPLCText( str, env, dbn, version );
                 terms.push( term );
                 str = str.slice( offset ).trim();
             }
-            if( terms.length < 1 ) throw new Error("ill formed uplc, missing constr term on case");
+        
+            if( terms.length < 1 )
+                throw new Error("ill formed uplc, missing constr term on case");
+            
             return {
                 term: new Case(
                     terms.shift()!,
@@ -214,6 +216,9 @@ export function _parseUPLCText(
         // "constr" MUST BE before "con"
         if( str.startsWith("constr") )
         {
+            if( !version.isV3Friendly() )
+                throw new Error("case uplc node found on program version: " + version.toString() );
+
             sliceTrimIncr( 6 );
             const closeIdx = indexOfNextUnmatchedParentesis( str );
             str = str.slice( 0, closeIdx );
@@ -272,7 +277,8 @@ export function _parseUPLCText(
     if( varDbn === undefined )
     {
         // console.log( env, `"${varName}"`, Object.keys( env )[0] === varName )
-        throwIllFormed()
+        // throwIllFormed();
+        throw new Error("unbound variable found");
     }
 
     return {
@@ -395,8 +401,7 @@ export function parseConstValueOfType(
         // we can handle it but plutus conformance doesn't allow it
         if( hex.length % 2 === 1 )
         {
-            console.log( hex );
-            throw new Error("invalid bytestring value");
+            throw new Error("invalid bytestring value: received: " + hex);
         }
 
         sliceTrimIncr( i );
@@ -644,8 +649,7 @@ export function parseConstType( str: string ): { type: ConstType, offset: number
         }
     }
 
-    console.log( str );
-    throw new Error("unknown UPLC const type");
+    throw new Error("unknown UPLC const type; src: " + str);
 }
 
 export function parseUPLCText( str: string, version: UPLCVersion = defaultUplcVersion ): UPLCTerm
