@@ -1,5 +1,6 @@
 import { readFileSync, readdirSync } from "fs";
 import { parseUPLCText } from "../UPLCTerm/parseUPLCText"
+import { showUPLC } from "../UPLCTerm/UPLCTerm";
 
 jest.setTimeout( 5_000 );
 
@@ -43,10 +44,6 @@ function testDir( path: string )
             );
             uplcSrc = uplcSrc.trim();
 
-            // remove wrapping program
-            if( uplcSrc.startsWith("(program" ) )
-            uplcSrc = uplcSrc.slice( uplcSrc.indexOf("(", 1 ), uplcSrc.length - 1 ).trim();
-
             if( expected.startsWith("parse error") )
             {
                 test(nextPath, () => {
@@ -58,14 +55,6 @@ function testDir( path: string )
             else
             {
                 test(nextPath, () => {
-                    let threw = false;
-                    try{
-                        parseUPLCText( uplcSrc );
-                        threw = false;
-                    } catch {
-                        threw = true;
-                        console.log( uplcSrc );
-                    }
                     expect(() => {
                         parseUPLCText( uplcSrc );
                     }).not.toThrow()
@@ -77,10 +66,10 @@ function testDir( path: string )
     // console.log( path );
 }
 
-// const base_path = "./src/__tests__/plutus_conformance";
+const base_path = "./src/__tests__/plutus_conformance/term/case";
 
 // skip tests for now
 // for some reason jest goes crazy whitout exiting
-// testDir( base_path );
+testDir( base_path );
 
 test("mock", () => {})

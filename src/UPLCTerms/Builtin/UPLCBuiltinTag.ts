@@ -186,7 +186,7 @@ export function builtinTagToString( tag: UPLCBuiltinTag ): string
             case UPLCBuiltinTag.modInteger :                        return "modInteger";
             case UPLCBuiltinTag.equalsInteger :                     return "equalsInteger";
             case UPLCBuiltinTag.lessThanInteger :                   return "lessThanInteger";
-            case UPLCBuiltinTag.lessThanEqualInteger :              return "lessThanEqualInteger";
+            case UPLCBuiltinTag.lessThanEqualInteger :              return "lessThanEqualsInteger";
             case UPLCBuiltinTag.appendByteString :                  return "appendByteString";
             case UPLCBuiltinTag.consByteString :                    return "consByteString";
             case UPLCBuiltinTag.sliceByteString :                   return "sliceByteString";
@@ -263,85 +263,88 @@ export function builtinTagToString( tag: UPLCBuiltinTag ): string
 
 export function builtinTagFromString( tag: string ): UPLCBuiltinTag
 {
-    switch( tag )
-        {
-            case "addInteger" :                        return UPLCBuiltinTag.addInteger;
-            case "subtractInteger" :                   return UPLCBuiltinTag.subtractInteger;
-            case "multiplyInteger" :                   return UPLCBuiltinTag.multiplyInteger;
-            case "divideInteger" :                     return UPLCBuiltinTag.divideInteger;
-            case "quotientInteger" :                   return UPLCBuiltinTag.quotientInteger;
-            case "remainderInteger" :                  return UPLCBuiltinTag.remainderInteger;
-            case "modInteger" :                        return UPLCBuiltinTag.modInteger;
-            case "equalsInteger" :                     return UPLCBuiltinTag.equalsInteger;
-            case "lessThanInteger" :                   return UPLCBuiltinTag.lessThanInteger;
-            case "lessThanEqualInteger" :              return UPLCBuiltinTag.lessThanEqualInteger;
-            case "appendByteString" :                  return UPLCBuiltinTag.appendByteString;
-            case "consByteString" :                    return UPLCBuiltinTag.consByteString;
-            case "sliceByteString" :                   return UPLCBuiltinTag.sliceByteString;
-            case "lengthOfByteString" :                return UPLCBuiltinTag.lengthOfByteString;
-            case "indexByteString" :                   return UPLCBuiltinTag.indexByteString;
-            case "equalsByteString" :                  return UPLCBuiltinTag.equalsByteString;
-            case "lessThanByteString" :                return UPLCBuiltinTag.lessThanByteString;
-            case "lessThanEqualsByteString" :          return UPLCBuiltinTag.lessThanEqualsByteString;
-            case "sha2_256" :                          return UPLCBuiltinTag.sha2_256;
-            case "sha3_256" :                          return UPLCBuiltinTag.sha3_256;
-            case "blake2b_256" :                       return UPLCBuiltinTag.blake2b_256;
-            case "verifyEd25519Signature":             return UPLCBuiltinTag.verifyEd25519Signature;
-            case "appendString" :                      return UPLCBuiltinTag.appendString;
-            case "equalsString" :                      return UPLCBuiltinTag.equalsString;
-            case "encodeUtf8" :                        return UPLCBuiltinTag.encodeUtf8;
-            case "decodeUtf8" :                        return UPLCBuiltinTag.decodeUtf8;
-            case "ifThenElse" :                        return UPLCBuiltinTag.ifThenElse;
-            case "chooseUnit" :                        return UPLCBuiltinTag.chooseUnit;
-            case "trace" :                             return UPLCBuiltinTag.trace;
-            case "fstPair" :                           return UPLCBuiltinTag.fstPair;
-            case "sndPair" :                           return UPLCBuiltinTag.sndPair;
-            case "chooseList" :                        return UPLCBuiltinTag.chooseList;
-            case "mkCons" :                            return UPLCBuiltinTag.mkCons;
-            case "headList" :                          return UPLCBuiltinTag.headList;
-            case "tailList" :                          return UPLCBuiltinTag.tailList;
-            case "nullList" :                          return UPLCBuiltinTag.nullList;
-            case "chooseData" :                        return UPLCBuiltinTag.chooseData;
-            case "constrData" :                        return UPLCBuiltinTag.constrData;
-            case "mapData" :                           return UPLCBuiltinTag.mapData;
-            case "listData" :                          return UPLCBuiltinTag.listData;
-            case "iData"    :                          return UPLCBuiltinTag.iData;
-            case "bData"    :                          return UPLCBuiltinTag.bData;
-            case "unConstrData" :                      return UPLCBuiltinTag.unConstrData;
-            case "unMapData"    :                      return UPLCBuiltinTag.unMapData;
-            case "unListData"   :                      return UPLCBuiltinTag.unListData;
-            case "unIData"      :                      return UPLCBuiltinTag.unIData;
-            case "unBData"      :                      return UPLCBuiltinTag.unBData;
-            case "equalsData"   :                      return UPLCBuiltinTag.equalsData;
-            case "mkPairData"   :                      return UPLCBuiltinTag.mkPairData;
-            case "mkNilData"    :                      return UPLCBuiltinTag.mkNilData;
-            case "mkNilPairData":                      return UPLCBuiltinTag.mkNilPairData;
-            case "serialiseData":                      return UPLCBuiltinTag.serialiseData;
-            case "verifyEcdsaSecp256k1Signature":      return UPLCBuiltinTag.verifyEcdsaSecp256k1Signature;
-            case "verifySchnorrSecp256k1Signature":    return UPLCBuiltinTag.verifySchnorrSecp256k1Signature;
-            case "bls12_381_G1_add"   :                return UPLCBuiltinTag.bls12_381_G1_add;
-            case "bls12_381_G1_neg"   :                return UPLCBuiltinTag.bls12_381_G1_neg;
-            case "bls12_381_G1_scalarMul":             return UPLCBuiltinTag.bls12_381_G1_scalarMul;
-            case "bls12_381_G1_equal":                 return UPLCBuiltinTag.bls12_381_G1_equal;
-            case "bls12_381_G1_hashToGroup":           return UPLCBuiltinTag.bls12_381_G1_hashToGroup;
-            case "bls12_381_G1_compress":              return UPLCBuiltinTag.bls12_381_G1_compress;
-            case "bls12_381_G1_uncompress":            return UPLCBuiltinTag.bls12_381_G1_uncompress;
-            case "bls12_381_G2_add":                   return UPLCBuiltinTag.bls12_381_G2_add;
-            case "bls12_381_G2_neg":                   return UPLCBuiltinTag.bls12_381_G2_neg;
-            case "bls12_381_G2_scalarMul":             return UPLCBuiltinTag.bls12_381_G2_scalarMul;
-            case "bls12_381_G2_equal":                 return UPLCBuiltinTag.bls12_381_G2_equal;
-            case "bls12_381_G2_hashToGroup":           return UPLCBuiltinTag.bls12_381_G2_hashToGroup;
-            case "bls12_381_G2_compress":              return UPLCBuiltinTag.bls12_381_G2_compress;
-            case "bls12_381_G2_uncompress":            return UPLCBuiltinTag.bls12_381_G2_uncompress;
-            case "bls12_381_millerLoop":               return UPLCBuiltinTag.bls12_381_millerLoop;
-            case "bls12_381_mulMlResult":              return UPLCBuiltinTag.bls12_381_mulMlResult;
-            case "bls12_381_finalVerify":              return UPLCBuiltinTag.bls12_381_finalVerify;
-            case "keccak_256":                         return UPLCBuiltinTag.keccak_256;
-            case "blake2b_224":                        return UPLCBuiltinTag.blake2b_224;
+    switch( tag.trim() )
+    {
+        case "addInteger" :                        return UPLCBuiltinTag.addInteger;
+        case "subtractInteger" :                   return UPLCBuiltinTag.subtractInteger;
+        case "multiplyInteger" :                   return UPLCBuiltinTag.multiplyInteger;
+        case "divideInteger" :                     return UPLCBuiltinTag.divideInteger;
+        case "quotientInteger" :                   return UPLCBuiltinTag.quotientInteger;
+        case "remainderInteger" :                  return UPLCBuiltinTag.remainderInteger;
+        case "modInteger" :                        return UPLCBuiltinTag.modInteger;
+        case "equalsInteger" :                     return UPLCBuiltinTag.equalsInteger;
+        case "lessThanInteger" :                   return UPLCBuiltinTag.lessThanInteger;
+        case "lessThanEqualInteger" :              return UPLCBuiltinTag.lessThanEqualInteger;
+        case "lessThanEqualsInteger" :             return UPLCBuiltinTag.lessThanEqualInteger;
+        case "appendByteString" :                  return UPLCBuiltinTag.appendByteString;
+        case "consByteString" :                    return UPLCBuiltinTag.consByteString;
+        case "sliceByteString" :                   return UPLCBuiltinTag.sliceByteString;
+        case "lengthOfByteString" :                return UPLCBuiltinTag.lengthOfByteString;
+        case "indexByteString" :                   return UPLCBuiltinTag.indexByteString;
+        case "equalsByteString" :                  return UPLCBuiltinTag.equalsByteString;
+        case "lessThanByteString" :                return UPLCBuiltinTag.lessThanByteString;
+        case "lessThanEqualsByteString" :          return UPLCBuiltinTag.lessThanEqualsByteString;
+        case "sha2_256" :                          return UPLCBuiltinTag.sha2_256;
+        case "sha3_256" :                          return UPLCBuiltinTag.sha3_256;
+        case "blake2b_256" :                       return UPLCBuiltinTag.blake2b_256;
+        case "verifyEd25519Signature":             return UPLCBuiltinTag.verifyEd25519Signature;
+        case "appendString" :                      return UPLCBuiltinTag.appendString;
+        case "equalsString" :                      return UPLCBuiltinTag.equalsString;
+        case "encodeUtf8" :                        return UPLCBuiltinTag.encodeUtf8;
+        case "decodeUtf8" :                        return UPLCBuiltinTag.decodeUtf8;
+        case "ifThenElse" :                        return UPLCBuiltinTag.ifThenElse;
+        case "chooseUnit" :                        return UPLCBuiltinTag.chooseUnit;
+        case "trace" :                             return UPLCBuiltinTag.trace;
+        case "fstPair" :                           return UPLCBuiltinTag.fstPair;
+        case "sndPair" :                           return UPLCBuiltinTag.sndPair;
+        case "chooseList" :                        return UPLCBuiltinTag.chooseList;
+        case "mkCons" :                            return UPLCBuiltinTag.mkCons;
+        case "headList" :                          return UPLCBuiltinTag.headList;
+        case "tailList" :                          return UPLCBuiltinTag.tailList;
+        case "nullList" :                          return UPLCBuiltinTag.nullList;
+        case "chooseData" :                        return UPLCBuiltinTag.chooseData;
+        case "constrData" :                        return UPLCBuiltinTag.constrData;
+        case "mapData" :                           return UPLCBuiltinTag.mapData;
+        case "listData" :                          return UPLCBuiltinTag.listData;
+        case "iData"    :                          return UPLCBuiltinTag.iData;
+        case "bData"    :                          return UPLCBuiltinTag.bData;
+        case "unConstrData" :                      return UPLCBuiltinTag.unConstrData;
+        case "unMapData"    :                      return UPLCBuiltinTag.unMapData;
+        case "unListData"   :                      return UPLCBuiltinTag.unListData;
+        case "unIData"      :                      return UPLCBuiltinTag.unIData;
+        case "unBData"      :                      return UPLCBuiltinTag.unBData;
+        case "equalsData"   :                      return UPLCBuiltinTag.equalsData;
+        case "mkPairData"   :                      return UPLCBuiltinTag.mkPairData;
+        case "mkNilData"    :                      return UPLCBuiltinTag.mkNilData;
+        case "mkNilPairData":                      return UPLCBuiltinTag.mkNilPairData;
+        case "serialiseData":                      return UPLCBuiltinTag.serialiseData;
+        case "verifyEcdsaSecp256k1Signature":      return UPLCBuiltinTag.verifyEcdsaSecp256k1Signature;
+        case "verifySchnorrSecp256k1Signature":    return UPLCBuiltinTag.verifySchnorrSecp256k1Signature;
+        case "bls12_381_G1_add"   :                return UPLCBuiltinTag.bls12_381_G1_add;
+        case "bls12_381_G1_neg"   :                return UPLCBuiltinTag.bls12_381_G1_neg;
+        case "bls12_381_G1_scalarMul":             return UPLCBuiltinTag.bls12_381_G1_scalarMul;
+        case "bls12_381_G1_equal":                 return UPLCBuiltinTag.bls12_381_G1_equal;
+        case "bls12_381_G1_hashToGroup":           return UPLCBuiltinTag.bls12_381_G1_hashToGroup;
+        case "bls12_381_G1_compress":              return UPLCBuiltinTag.bls12_381_G1_compress;
+        case "bls12_381_G1_uncompress":            return UPLCBuiltinTag.bls12_381_G1_uncompress;
+        case "bls12_381_G2_add":                   return UPLCBuiltinTag.bls12_381_G2_add;
+        case "bls12_381_G2_neg":                   return UPLCBuiltinTag.bls12_381_G2_neg;
+        case "bls12_381_G2_scalarMul":             return UPLCBuiltinTag.bls12_381_G2_scalarMul;
+        case "bls12_381_G2_equal":                 return UPLCBuiltinTag.bls12_381_G2_equal;
+        case "bls12_381_G2_hashToGroup":           return UPLCBuiltinTag.bls12_381_G2_hashToGroup;
+        case "bls12_381_G2_compress":              return UPLCBuiltinTag.bls12_381_G2_compress;
+        case "bls12_381_G2_uncompress":            return UPLCBuiltinTag.bls12_381_G2_uncompress;
+        case "bls12_381_millerLoop":               return UPLCBuiltinTag.bls12_381_millerLoop;
+        case "bls12_381_mulMlResult":              return UPLCBuiltinTag.bls12_381_mulMlResult;
+        case "bls12_381_finalVerify":              return UPLCBuiltinTag.bls12_381_finalVerify;
+        case "keccak_256":                         return UPLCBuiltinTag.keccak_256;
+        case "blake2b_224":                        return UPLCBuiltinTag.blake2b_224;
+        case "integerToByteString":                return UPLCBuiltinTag.integerToByteString
+        case "byteStringToInteger":                return UPLCBuiltinTag.byteStringToInteger
 
-            
-            default:
-                // tag; // check that is of type 'never'
-                throw new Error("unknow builtin: " + tag)
-        }
+        
+        default:
+            // tag; // check that is of type 'never'
+            throw new Error("unknow builtin: " + tag)
+    }
 }

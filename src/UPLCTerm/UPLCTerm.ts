@@ -6,9 +6,9 @@ import { UPLCConst } from "../UPLCTerms/UPLCConst/UPLCConst";
 import { Force } from "../UPLCTerms/Force";
 import { ErrorUPLC } from "../UPLCTerms/ErrorUPLC";
 import { Builtin } from "../UPLCTerms/Builtin/Builtin";
-import { ConstType, constListTypeUtils, constPairTypeUtils, constTypeToStirng, ConstTyTag } from "../UPLCTerms/UPLCConst/ConstType";
+import { ConstType, constListTypeUtils, constPairTypeUtils, constTypeToStirng, ConstTyTag, constTypeEq } from "../UPLCTerms/UPLCConst/ConstType";
 import { builtinTagToString, getNRequiredForces } from "../UPLCTerms/Builtin/UPLCBuiltinTag";
-import { ConstValue, isConstValueInt } from "../UPLCTerms/UPLCConst/ConstValue";
+import { ConstValue, canConstValueBeOfConstType, eqConstValue, isConstValueInt } from "../UPLCTerms/UPLCConst/ConstValue";
 import { ByteString } from "@harmoniclabs/bytestring";
 import { Pair } from "@harmoniclabs/pair";
 import { isData, dataToCbor } from "@harmoniclabs/plutus-data";
@@ -164,19 +164,19 @@ export function showConstType( t: ConstType ): string
 {
     if( t[0] === ConstTyTag.list )
     {
-        return `list( ${showConstType( constListTypeUtils.getTypeArgument( t as any ) )} )`;
+        return `(list ${showConstType( constListTypeUtils.getTypeArgument( t as any ) )})`;
     }
     if( t[0] === ConstTyTag.pair )
     {
-        return `pair( ${
+        return `(pair ${
             showConstType( 
                 constPairTypeUtils.getFirstTypeArgument( t as any ) 
             )
-        }, ${
+        } ${
             showConstType( 
                 constPairTypeUtils.getSecondTypeArgument( t as any )
             )
-        } )`;
+        })`;
     }
 
     return constTypeToStirng( t );
@@ -214,11 +214,11 @@ function _showUPLC( t: UPLCTerm, dbn: number ): string
     }
     if( t instanceof Constr )
     {
-        return "(constr " + t.index.toString() + " [" + t.terms.map( term => _showUPLC( term, dbn ) ).join(",") + "])";
+        return "(constr " + t.index.toString() + " " + t.terms.map( term => _showUPLC( term, dbn ) ).join(" ") + ")";
     }
     if( t instanceof Case )
     {
-        return "(case " + _showUPLC( t.constrTerm, dbn ) + " [" + t.continuations.map( term => _showUPLC( term, dbn ) ).join(",") + "])";
+        return "(case " + _showUPLC( t.constrTerm, dbn ) + " " + t.continuations.map( term => _showUPLC( term, dbn ) ).join(" ") + ")";
     }
     
     return "";
@@ -413,4 +413,53 @@ function _getUPLCVarRefsInTerm( dbn: bigint, t: UPLCTerm, countedUntilNow: numbe
     throw new Error(
         "getUPLCVarRefsInTerm did not matched any possible 'UPLCTerm' constructor"
     );
+}
+
+
+// type UPLCTerm = UPLCVar | Delay | Lambda | Application | UPLCConst | Force | ErrorUPLC | Builtin | Constr | Case;
+export function eqUPLCTerm( a: UPLCTerm, b: UPLCTerm ): boolean
+{
+    if( a instanceof ErrorUPLC ) return b instanceof ErrorUPLC;
+
+    if( a instanceof UPLCVar && b instanceof UPLCVar) return a.deBruijn === b.deBruijn;
+    if( a instanceof Delay && b instanceof Delay ) return eqUPLCTerm( a.delayedTerm, b.delayedTerm )
+    if( a instanceof Lambda && b instanceof Lambda) return eqUPLCTerm( a.body, b.body );
+    if( a instanceof Application && b instanceof Application )
+    return (
+        eqUPLCTerm( a.argTerm, b.argTerm ) &&
+        eqUPLCTerm( a.funcTerm, b.funcTerm )
+    );
+    if( a instanceof UPLCConst && b instanceof UPLCConst )
+    return (
+        constTypeEq( a.type, b.type ) &&
+        canConstValueBeOfConstType( a.value, a.type ) &&
+        canConstValueBeOfConstType( b.value, b.type ) &&
+        (() => {
+            try {
+                return eqConstValue( a.value, b.value );
+            } catch (e) {
+                if( e instanceof RangeError ) return false;
+
+                throw e;
+            }
+        })()
+    );
+    if( a instanceof Force && b instanceof Force ) return eqUPLCTerm( a.termToForce, b.termToForce );
+    if( a instanceof Builtin && b instanceof Builtin ) return a.tag === b.tag;
+    
+    if( a instanceof Constr && b instanceof Constr )
+    return (
+        a.index === b.index &&
+        a.terms.length === b.terms.length &&
+        a.terms.every((t,i) => eqUPLCTerm( t, b.terms[i] ))
+    );
+
+    if( a instanceof Case && b instanceof Case )
+    return (
+        eqUPLCTerm( a.constrTerm, b.constrTerm ) &&
+        a.continuations.length === b.continuations.length &&
+        a.continuations.every((t,i) => eqUPLCTerm( t, b.continuations[i] ))
+    );
+    
+    return false;
 }

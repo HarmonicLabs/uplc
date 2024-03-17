@@ -1,10 +1,15 @@
 import { ByteString } from "@harmoniclabs/bytestring";
-import { Application, Builtin, ConstTyTag, ConstType, ConstValue, ConstValueList, Delay, ErrorUPLC, Force, Lambda, UPLCConst, UPLCVar, builtinTagFromString, constListTypeUtils, constPairTypeUtils, constT, constTypeEq, eqConstValue, getNRequiredForces } from "../UPLCTerms";
+import { Application, Builtin, Case, ConstTyTag, ConstType, ConstValue, ConstValueList, Constr, Delay, ErrorUPLC, Force, Lambda, UPLCConst, UPLCVar, builtinTagFromString, constListTypeUtils, constPairTypeUtils, constT, constTypeEq, constTypeToStirng, eqConstValue, getNRequiredForces } from "../UPLCTerms";
 import { UPLCTerm } from "./UPLCTerm";
-import { dataFromCbor } from "@harmoniclabs/plutus-data";
+import { Data, dataFromCbor, dataFromString } from "@harmoniclabs/plutus-data";
 import { Pair } from "@harmoniclabs/pair";
 import { bls12_381_G1_uncompress, bls12_381_G2_uncompress } from "@harmoniclabs/crypto";
 import { fromHex } from "@harmoniclabs/uint8array-utils";
+import { indexOfNextCommaOutsideParentesis } from "../utils/indexOfNextCommaOutsideParentesis";
+import { indexOfNextUnmatchedParentesis } from "../utils/indexOfNextUnmatchedParentesis";
+import { getTextBetweenMatchingQuotes } from "../utils/getTextBetweenMatchingQuotes";
+import { indexOfMany } from "../utils/indexOfMany";
+import { off } from "process";
 
 
 /*
@@ -59,15 +64,8 @@ export function _parseUPLCText(
     }
 
     const getNextWord = ( s: string = str ): string => {
-        let fstSpaceIdx = s.indexOf(" ");
-        if( fstSpaceIdx < 0 )
-        {
-            fstSpaceIdx = s.indexOf("\n");
-            if( fstSpaceIdx < 0 )
-            {
-                fstSpaceIdx = str.length - 1; 
-            }
-        }
+        let fstSpaceIdx = s.search(/\s/);
+        if( fstSpaceIdx < 0 ) fstSpaceIdx = str.length - 1;
         let varName = s.slice( 0, fstSpaceIdx ).trim();
         
         while( 
@@ -75,13 +73,15 @@ export function _parseUPLCText(
             varName.endsWith("]")   ||
             varName.endsWith(" ")   ||
             varName.endsWith("\n")
-        )
-        varName = varName.slice( 0, varName.length - 1 );
+        ){
+            varName = varName.slice( 0, varName.length - 1 );
+        }
 
         return varName;
     }
 
     sliceTrimIncr( 0 );
+
 
     const ch = str[0];
     // drop the opening bracket;
@@ -106,10 +106,10 @@ export function _parseUPLCText(
     if( ch === "(" )
     {
         sliceTrimIncr( 1 );     
-        offset += getOffsetToNextClosingBracket( str, "(", ")" );
-
+        
         if( str.startsWith("error") )
         {
+            offset += getOffsetToNextClosingBracket( str, "(", ")" );
             return {
                 term: new ErrorUPLC(),
                 offset
@@ -117,6 +117,7 @@ export function _parseUPLCText(
         }
         if( str.startsWith("delay") )
         {
+            offset += getOffsetToNextClosingBracket( str, "(", ")" );
             return {
                 term: new Delay(
                     _parseUPLCText( str.slice( 5 ), env, dbn ).term
@@ -126,6 +127,7 @@ export function _parseUPLCText(
         }
         if( str.startsWith("force") )
         {
+            offset += getOffsetToNextClosingBracket( str, "(", ")" );
             const directChild = _parseUPLCText( str.slice( 5 ), env, dbn ).term;
 
             if(
@@ -152,6 +154,7 @@ export function _parseUPLCText(
         }
         if( str.startsWith("builtin") )
         {
+            offset += getOffsetToNextClosingBracket( str, "(", ")" );
             str = str.slice( 7 ).trimStart();
             return {
                 term: new Builtin(
@@ -163,6 +166,7 @@ export function _parseUPLCText(
 
         if( str.startsWith("lam") )
         {
+            offset += getOffsetToNextClosingBracket( str, "(", ")" );
             str = str.slice(3).trimStart();
 
             const varName = getNextWord();
@@ -177,16 +181,67 @@ export function _parseUPLCText(
                 offset
             };
         }
+        
+        if( str.startsWith("case") )
+        {
+            sliceTrimIncr( 4 );
+            const closeIdx = indexOfNextUnmatchedParentesis( str );
+            str = str.slice( 0, closeIdx );
+            const terms: UPLCTerm[] = [];
+            str = str.trim();
+            while( str.length > 0 )
+            {
+                const { term, offset } = _parseUPLCText( str, env, dbn );
+                terms.push( term );
+                str = str.slice( offset ).trim();
+            }
+            if( terms.length < 1 ) throw new Error("ill formed uplc, missing constr term on case");
+            return {
+                term: new Case(
+                    terms.shift()!,
+                    terms
+                ),
+                offset: offset + closeIdx + 1
+            }
+        }
+
+        // "constr" MUST BE before "con"
+        if( str.startsWith("constr") )
+        {
+            sliceTrimIncr( 6 );
+            const closeIdx = indexOfNextUnmatchedParentesis( str );
+            str = str.slice( 0, closeIdx );
+            const { value: idx, offset: idxOffset } = parseConstValueOfType( str, constT.int );
+            str = str.slice( idxOffset );
+            if( typeof idx !== "bigint" ) throw new Error("ill formed uplc; constr expects u64 index");
+            const terms: UPLCTerm[] = [];
+            str = str.trim();
+            while( str.length > 0 )
+            {
+                const { term, offset } = _parseUPLCText( str, env, dbn );
+                terms.push( term );
+                str = str.slice( offset ).trim();
+            }
+            return {
+                term: new Constr(
+                    idx,
+                    terms
+                ),
+                offset: offset + closeIdx + 1
+            };
+        }
 
         if( str.startsWith("con") )
         {
-            sliceTrimIncr( 3 );
+            offset += getOffsetToNextClosingBracket( str, "(", ")" );
+            str = str.slice( 3 ).trimStart();
 
             const t = parseConstType( str );
-
-            sliceTrimIncr( t.offset );
+            
+            str = str.slice( t.offset ).trimStart();
 
             const v = parseConstValueOfType( str, t.type );
+            str = str.slice( v.offset ).trimStart();
 
             return {
                 term: new UPLCConst( t.type as any, v.value as any ),
@@ -227,6 +282,11 @@ function isHexChar( ch: string ): boolean
     return hexChars.includes( ch[0].toLowerCase() );
 }
 
+function isLowestNonNegative( a: number, b: number ):  boolean
+{
+    return a >= 0 && (b < 0 || a < b);
+}
+
 export function parseConstValueOfType(
     str: string,
     t: ConstType
@@ -255,9 +315,21 @@ export function parseConstValueOfType(
     }
     if( constTypeEq( t, constT.int ) )
     {
-        const endInteger = str.indexOf(" ");
-        const value = parseInt( str.slice( 0 , endInteger ) )
-        sliceTrimIncr( endInteger + 1 );
+        const regExpRes = str
+            .slice( 0, str.indexOf(")") )
+            // \+?\-?           -> may or may nost start with "+" or "-"
+            // (?<!\.)          -> MUST NOT have dots before
+            // (?<!(#|x)\d*)    -> MUST NOT have before "#" or "x" with 0 or more digits (escluded bls elements and bytestrings)
+            // \d+              -> one or more digits
+            // (?!(\.|x))       -> MUST NOT have dots after or "x" (x excludes "0x" which are bls elems)
+            .match(/\+?\-?(?<!\.)(?<!(#|x)\d*)\d+(?!(\.|x))/);
+        if( regExpRes === null )
+        throw new Error("could not find integer for constant uplc");
+        
+        const nStr = regExpRes[0];
+        const value = BigInt( nStr );
+        sliceTrimIncr( str.indexOf( nStr ) + nStr.length );
+        
         return {
             value,
             offset
@@ -265,10 +337,16 @@ export function parseConstValueOfType(
     }
     if( constTypeEq( t, constT.str ) )
     {
-        sliceTrimIncr( str.indexOf('"') + 1 );
-        const closingQuoteIdx = str.indexOf('"');
-        const value = str.slice( 0, closingQuoteIdx );
-        sliceTrimIncr( closingQuoteIdx + 1 );
+        const quoteIdx = str.indexOf('"');
+        if( !/^\s*$/.test( str.slice( 0, quoteIdx ) ) ) throw new Error("ill formed uplc");
+
+        sliceTrimIncr( quoteIdx );
+        const value = getTextBetweenMatchingQuotes( str );
+
+        if( typeof value !== "string" )
+        throw new Error("missing constant string value");
+        
+        sliceTrimIncr( value.length + 2 );
         return {
             value,
             offset
@@ -276,24 +354,43 @@ export function parseConstValueOfType(
     }
     if( constTypeEq( t, constT.bool ) )
     {
-        const value = str.startsWith("True") ? true : false;
-        sliceTrimIncr( value ? 4 : 5 );
-        return {
-            value,
-            offset
-        };
+        const trueIdx = str.indexOf("True");
+        const falseIdx = str.indexOf("False");
+        if( trueIdx < 0 && falseIdx < 0 ) throw new Error("expected boolean value; found none");
+
+        const isTrue  = isLowestNonNegative( trueIdx, falseIdx );
+        
+        if( isTrue )
+        {
+            sliceTrimIncr( trueIdx + 4 );
+            return {
+                value: true,
+                offset
+            }
+        }
+        else
+        {
+            sliceTrimIncr( falseIdx + 5 );
+            return {
+                value: false,
+                offset
+            }
+        }
     }
     if( constTypeEq( t, constT.byteStr ) )
     {
         sliceTrimIncr( str.indexOf("#") + 1 );
         let i = 0;
-        while( isHexChar( str[ i++ ] ) );
-        i--; // last char is not hex
+        while( i < str.length && isHexChar( str[ i++ ] ) );
+        !isHexChar( str[i-1] ) && i--;
         const hex = str.slice( 0, i );
 
         // we can handle it but plutus conformance doesn't allow it
         if( hex.length % 2 === 1 )
-        throw new Error("invalid bytestring value");
+        {
+            console.log( hex );
+            throw new Error("invalid bytestring value");
+        }
 
         sliceTrimIncr( i );
         return {
@@ -303,37 +400,40 @@ export function parseConstValueOfType(
     }
     if( constTypeEq( t, constT.data ) )
     {
-        sliceTrimIncr( str.indexOf("#") + 1 );
-        let i = 0;
-        while( isHexChar( str[ i++ ] ) );
-        i--; // last char is not hex
-        const hex = str.slice( 0, i );
-        sliceTrimIncr( i );
+        sliceTrimIncr( 0 );
+        const { data, offset: dataOffset } = dataFromStringWithOffset( str );
+        offset += dataOffset;
         return {
-            value: dataFromCbor( hex ),
+            value: data,
             offset
         };
     }
     if( constTypeEq( t, constT.bls12_381_G1_element ) )
     {
-        sliceTrimIncr( str.indexOf( "0x" ) + 2 );
+        const original = str;
+        str = str.slice( 0, str.indexOf(")") + 1 ).trimStart();
+        offset += (original.length - original.indexOf( str )) + 2 /*0x*/ + 96 ;
+
+        const match = str.match(/^0x[0-9a-fA-F]{96}(?![0-9a-fA-F]+)/);// 48 bytes; 96 hex chars
+        if( !match ) throw new Error("missing bls g1 compressed elem");
+
         const value = bls12_381_G1_uncompress(
-            fromHex(
-                str.slice( 0, 96 )// 48 bytes; 96 hex chars
-            )
+            fromHex( match[0].slice(2) )
         );
-        sliceTrimIncr( 96 );
         return { value, offset };
     }
     if( constTypeEq( t, constT.bls12_381_G2_element ) )
     {
-        sliceTrimIncr( str.indexOf( "0x" ) + 2 );
+        const original = str;
+        str = str.slice( 0, str.indexOf(")") + 1 ).trimStart();
+        offset += (original.length - original.indexOf( str )) + 2 /*0x*/ + 192 ;
+
+        const match = str.match(/^0x[0-9a-fA-F]{192}(?![0-9a-fA-F]+)/);// 96 bytes; 192 hex chars
+        if( !match ) throw new Error("missing bls g2 compressed elem");
+        
         const value = bls12_381_G2_uncompress(
-            fromHex(
-                str.slice( 0, 192 )// 96 bytes; 192 hex chars
-            )
+            fromHex( match[0].slice(2) )
         );
-        sliceTrimIncr( 192 );
         return { value, offset };
     }
     if( constTypeEq( t, constT.bls12_381_MlResult ) )
@@ -344,20 +444,20 @@ export function parseConstValueOfType(
     if( t[0] === ConstTyTag.pair )
     {
         sliceTrimIncr( str.indexOf("(") + 1 );
+        
+        const commaIdx = indexOfNextCommaOutsideParentesis( str );
         const fst = parseConstValueOfType( 
-            str, 
+            str.slice( 0, commaIdx ), 
             constPairTypeUtils.getFirstTypeArgument( t )
         );
-        sliceTrimIncr( fst.offset );
-        sliceTrimIncr( str.indexOf(",") + 1 );
+        sliceTrimIncr( commaIdx + 1 );
         
+        const closeIdx = indexOfNextUnmatchedParentesis( str );
         const snd = parseConstValueOfType( 
-            str, 
+            str.slice( 0, closeIdx ), 
             constPairTypeUtils.getSecondTypeArgument( t )
         );
-
-        sliceTrimIncr( snd.offset );
-        sliceTrimIncr( str.indexOf(")") + 1 );
+        sliceTrimIncr( closeIdx + 1 );
 
         return {
             value: new Pair( fst.value, snd.value ),
@@ -469,70 +569,86 @@ export function parseConstType( str: string ): { type: ConstType, offset: number
     if( str.startsWith("bls12_381_MlResult") )
     throw new Error("bls12_381_MlResult const not supported in textual UPLC");
 
-    if( str.startsWith("list") )
+    if( str.startsWith("(") )
     {
-        const fstValidIndex = str.indexOf("(") + 1;
-        if( fstValidIndex < 1 )
-        throw new Error("invalid uplc contant type")
-
-        sliceTrimIncr( fstValidIndex );
-
-        const elems = parseConstType( str );
-        sliceTrimIncr( elems.offset );
-
-        while(
-            !str.startsWith(")")
-        ) sliceTrimIncr( 1 );
-
         sliceTrimIncr( 1 );
 
-        return {
-            type: constT.listOf( elems.type ),
-            offset
+        const listIdx = str.indexOf("list");
+        const pairIdx = str.indexOf("pair");
+
+        if( listIdx < 0 && pairIdx < 0 )
+        throw new Error(
+            "invalid constant type; expected list or pair"
+        );
+
+        const isList = isLowestNonNegative( listIdx, pairIdx );
+        const isPair = isLowestNonNegative( pairIdx, listIdx );
+
+        if( isList )
+        {
+            sliceTrimIncr( listIdx + 4 );
+    
+            const elems = parseConstType( str );
+            sliceTrimIncr( elems.offset );
+    
+            while(
+                !str.startsWith(")")
+            ) sliceTrimIncr( 1 );
+    
+            sliceTrimIncr( 1 );
+    
+            return {
+                type: constT.listOf( elems.type ),
+                offset
+            }
+        }
+        else if( isPair )
+        {
+            sliceTrimIncr( pairIdx + 4 );
+            
+            const fst = parseConstType( str );
+            sliceTrimIncr( fst.offset );
+    
+            while(
+                str.startsWith(" ")     ||
+                str.startsWith("\n")
+            ) sliceTrimIncr( 1 );
+    
+            const snd = parseConstType( str );
+            sliceTrimIncr( snd.offset );    
+    
+            while(
+                !str.startsWith(")")
+            ) sliceTrimIncr( 1 );
+    
+            sliceTrimIncr( 1 );
+    
+            return {
+                type: constT.pairOf( fst.type, snd.type ),
+                offset
+            }
+        }
+        else
+        {
+            console.log( str, listIdx, pairIdx );     
+            throw new Error(
+                "invalid constant type; missing list or pair"
+            );
         }
     }
 
-    if( str.startsWith("pair") )
-    {
-        const fstValidIndex = str.indexOf("(") + 1;
-        if( fstValidIndex < 1 )
-        throw new Error("invalid uplc contant type")
-
-        sliceTrimIncr( fstValidIndex );
-        
-        const fst = parseConstType( str );
-        sliceTrimIncr( fst.offset );
-
-        while(
-            str.startsWith(",")     ||
-            str.startsWith(" ")     ||
-            str.startsWith("\n")
-        ) sliceTrimIncr( 1 );
-
-        const snd = parseConstType( str );
-        sliceTrimIncr( snd.offset );
-
-
-        while(
-            !str.startsWith(")")
-        ) sliceTrimIncr( 1 );
-
-        sliceTrimIncr( 1 );
-
-        return {
-            type: constT.pairOf( fst.type, snd.type ),
-            offset
-        }
-    }
-
-    throw new Error("unknown UPLC const type")
+    console.log( str );
+    throw new Error("unknown UPLC const type");
 }
 
 export function parseUPLCText( str: string ): UPLCTerm
 {
     str = str.trim();
-    if( str.startsWith("(program" ) )
-    str = str.slice( str.indexOf("(", 1 ), str.length - 1 );
+    if( str.startsWith("(program") )
+    {
+        str = str.slice( 8, str.lastIndexOf(")") );
+        str = str.slice( indexOfMany( str, "(", "[" ) );
+    }
     return _parseUPLCText( str, {}, 0 ).term;
 }
 
@@ -574,4 +690,23 @@ export function getOffsetToNextClosingBracket(
     }
 
     return offset;
+}
+
+// we have `dataFromString` from "@harmoniclabs/plutus-data"
+// but no way to reliably retreive the offset
+// seo
+function dataFromStringWithOffset( str: string ): { data: Data, offset: number }
+{
+    const original = str;
+    const openIdx = str.indexOf("(");
+    if( openIdx < 0 ) throw new Error("missign opening wrapping parentesis for data");
+    str = str.slice( openIdx + 1 );
+    let offset = original.length - str.length;
+    const closeIdx = indexOfNextUnmatchedParentesis( str );
+    if( closeIdx < 0 ) throw new Error("missign closing wrapping parentesis for data");
+    offset += closeIdx + 1;
+    return {
+        data: dataFromString( str.slice( 0, closeIdx ).trim() ),
+        offset
+    }
 }
