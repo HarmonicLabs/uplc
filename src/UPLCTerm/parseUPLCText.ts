@@ -10,6 +10,7 @@ import { indexOfNextUnmatchedParentesis } from "../utils/indexOfNextUnmatchedPar
 import { getTextBetweenMatchingQuotes } from "../utils/getTextBetweenMatchingQuotes";
 import { indexOfMany } from "../utils/indexOfMany";
 import { off } from "process";
+import { UPLCVersion, defaultUplcVersion } from "../UPLCProgram";
 
 
 /*
@@ -45,7 +46,8 @@ type ParseUPLCTextEnv = { [x: string]: number };
 export function _parseUPLCText(
     str: string,
     env: ParseUPLCTextEnv,
-    dbn: number
+    dbn: number,
+    version: UPLCVersion
 ): { term: UPLCTerm, offset: number }
 {
     // clone (other branches migh modify vars dbns)
@@ -91,11 +93,11 @@ export function _parseUPLCText(
         sliceTrimIncr( 1 )
         offset += getOffsetToNextClosingBracket( str, "[", "]" );
 
-        const fn = _parseUPLCText( str, env, dbn );
+        const fn = _parseUPLCText( str, env, dbn, version );
         
         str = str.slice( fn.offset + 1 );
 
-        const arg = _parseUPLCText( str, env, dbn );
+        const arg = _parseUPLCText( str, env, dbn, version );
 
         return {
             term: new Application( fn.term, arg.term ),
@@ -120,7 +122,7 @@ export function _parseUPLCText(
             offset += getOffsetToNextClosingBracket( str, "(", ")" );
             return {
                 term: new Delay(
-                    _parseUPLCText( str.slice( 5 ), env, dbn ).term
+                    _parseUPLCText( str.slice( 5 ), env, dbn, version).term
                 ),
                 offset
             };
@@ -128,7 +130,7 @@ export function _parseUPLCText(
         if( str.startsWith("force") )
         {
             offset += getOffsetToNextClosingBracket( str, "(", ")" );
-            const directChild = _parseUPLCText( str.slice( 5 ), env, dbn ).term;
+            const directChild = _parseUPLCText( str.slice( 5 ), env, dbn, version ).term;
 
             if(
                 directChild instanceof Builtin &&
@@ -176,7 +178,7 @@ export function _parseUPLCText(
 
             return {
                 term: new Lambda(
-                    _parseUPLCText( str, env, dbn + 1 ).term
+                    _parseUPLCText( str, env, dbn + 1, version ).term
                 ),
                 offset
             };
@@ -184,6 +186,10 @@ export function _parseUPLCText(
         
         if( str.startsWith("case") )
         {
+            if( !version.isV3Friendly() )
+            {
+                throw new ErrorUPLC("case uplc node found on program version: " + version.toString() );
+            }
             sliceTrimIncr( 4 );
             const closeIdx = indexOfNextUnmatchedParentesis( str );
             str = str.slice( 0, closeIdx );
@@ -191,7 +197,7 @@ export function _parseUPLCText(
             str = str.trim();
             while( str.length > 0 )
             {
-                const { term, offset } = _parseUPLCText( str, env, dbn );
+                const { term, offset } = _parseUPLCText( str, env, dbn, version );
                 terms.push( term );
                 str = str.slice( offset ).trim();
             }
@@ -202,7 +208,7 @@ export function _parseUPLCText(
                     terms
                 ),
                 offset: offset + closeIdx + 1
-            }
+            };
         }
 
         // "constr" MUST BE before "con"
@@ -218,7 +224,7 @@ export function _parseUPLCText(
             str = str.trim();
             while( str.length > 0 )
             {
-                const { term, offset } = _parseUPLCText( str, env, dbn );
+                const { term, offset } = _parseUPLCText( str, env, dbn, version );
                 terms.push( term );
                 str = str.slice( offset ).trim();
             }
@@ -315,8 +321,9 @@ export function parseConstValueOfType(
     }
     if( constTypeEq( t, constT.int ) )
     {
+        const closeIndex = str.indexOf(")");
         const regExpRes = str
-            .slice( 0, str.indexOf(")") )
+            .slice( 0, closeIndex < 0 ? undefined : closeIndex )
             // \+?\-?           -> may or may nost start with "+" or "-"
             // (?<!\.)          -> MUST NOT have dots before
             // (?<!(#|x)\d*)    -> MUST NOT have before "#" or "x" with 0 or more digits (escluded bls elements and bytestrings)
@@ -641,15 +648,19 @@ export function parseConstType( str: string ): { type: ConstType, offset: number
     throw new Error("unknown UPLC const type");
 }
 
-export function parseUPLCText( str: string ): UPLCTerm
+export function parseUPLCText( str: string, version: UPLCVersion = defaultUplcVersion ): UPLCTerm
 {
     str = str.trim();
     if( str.startsWith("(program") )
     {
-        str = str.slice( 8, str.lastIndexOf(")") );
+        str = str.slice( 8, str.lastIndexOf(")") ).trim();
+        const verStr = str.match(/^\d+\.\d+\.\d+(?!\.)/);
+        if( !verStr ) throw new Error("uplc program without version");
+        version = UPLCVersion.fromString( verStr[0] );
         str = str.slice( indexOfMany( str, "(", "[" ) );
     }
-    return _parseUPLCText( str, {}, 0 ).term;
+    version = version instanceof UPLCVersion ? version : defaultUplcVersion;
+    return _parseUPLCText( str, {}, 0, version ).term;
 }
 
 /**

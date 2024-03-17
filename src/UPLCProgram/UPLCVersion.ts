@@ -29,4 +29,16 @@ export class UPLCVersion
     {
         return `${this.major}.${this.minor}.${this.patch}`;
     }
+
+    static fromString( str: string ): UPLCVersion
+    {
+        const [ a, b, c ] = str.split(".")
+        return new UPLCVersion(
+            BigInt( a ),
+            BigInt( b ),
+            BigInt( c )
+        )
+    }
 }
+
+export const defaultUplcVersion = new UPLCVersion( 1, 1, 0 );
