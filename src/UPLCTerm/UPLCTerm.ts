@@ -146,7 +146,7 @@ export function showUPLCConstValue( v: ConstValue ): string
     if( typeof v === "string" ) return `"${v}"`;
     if( typeof v === "boolean" )  return v ? "True" : "False";
     if( v instanceof ByteString ) return "#" + v.toString();
-    if( isData( v ) ) return "#" + dataToCbor( v ).toString();
+    if( isData( v ) ) return v.toString();
 
     if( isBlsG1( v ) ) return `0x${toHex(bls12_381_G1_compress( v ))}`;
     if( isBlsG2( v ) ) return `0x${toHex(bls12_381_G2_compress( v ))}`;
@@ -203,7 +203,7 @@ function _showUPLC( t: UPLCTerm, dbn: number ): string
         return `(lam ${getVarNameForDbn( dbn )} ${ _showUPLC( t.body, dbn + 1 ) })`;
     }
     if( t instanceof Application ) return `[${ _showUPLC( t.funcTerm, dbn ) } ${ _showUPLC( t.argTerm, dbn ) }]`;
-    if( t instanceof UPLCConst ) return `(con ${showConstType(t.type)} ${ showUPLCConstValue( t.value ) })`;
+    if( t instanceof UPLCConst ) return `(con ${showConstType(t.type)} ${showUPLCConstValue( t.value )})`;
     if( t instanceof Force ) return `(force ${ _showUPLC( t.termToForce, dbn ) })`;
     if( t instanceof ErrorUPLC ) return "(error)";
     if( t instanceof Builtin )
@@ -256,7 +256,7 @@ export function prettyUPLC( term: UPLCTerm, _indent: number = 2 ): string
             return `${indent}(lam ${getVarNameForDbn( dbn )} ${ _prettyUPLC( t.body, dbn + 1, depth + 1 ) }${indent})`;
         }
         if( t instanceof Application ) return `${indent}[${ _prettyUPLC( t.funcTerm, dbn, depth + 1 ) } ${ _prettyUPLC( t.argTerm, dbn, depth + 1 ) }${indent}]`;
-        if( t instanceof UPLCConst ) return `${indent}(con ${showConstType(t.type)} ${ showUPLCConstValue( t.value ) })`;
+        if( t instanceof UPLCConst ) return `${indent}(con ${showConstType(t.type)} ${showUPLCConstValue( t.value )})`;
         if( t instanceof Force ) return `${indent}(force ${ _prettyUPLC( t.termToForce, dbn, depth + 1 ) }${indent})`;
         if( t instanceof ErrorUPLC ) return "(error)";
         if( t instanceof Builtin )

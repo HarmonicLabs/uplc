@@ -1,7 +1,7 @@
 import { ByteString } from "@harmoniclabs/bytestring";
 import { Application, Builtin, Case, ConstTyTag, ConstType, ConstValue, ConstValueList, Constr, Delay, ErrorUPLC, Force, Lambda, UPLCConst, UPLCVar, builtinTagFromString, constListTypeUtils, constPairTypeUtils, constT, constTypeEq, constTypeToStirng, eqConstValue, getNRequiredForces } from "../UPLCTerms";
 import { UPLCTerm } from "./UPLCTerm";
-import { Data, dataFromCbor, dataFromString } from "@harmoniclabs/plutus-data";
+import { Data, dataFromCbor, dataFromString, dataFromStringWithOffset } from "@harmoniclabs/plutus-data";
 import { Pair } from "@harmoniclabs/pair";
 import { bls12_381_G1_uncompress, bls12_381_G2_uncompress } from "@harmoniclabs/crypto";
 import { fromHex } from "@harmoniclabs/uint8array-utils";
@@ -456,7 +456,6 @@ export function parseConstValueOfType(
     if( t[0] === ConstTyTag.pair )
     {
         sliceTrimIncr( str.indexOf("(") + 1 );
-        
         const commaIdx = indexOfNextCommaOutsideParentesis( str );
         const fst = parseConstValueOfType( 
             str.slice( 0, commaIdx ), 
@@ -710,7 +709,7 @@ export function getOffsetToNextClosingBracket(
 // we have `dataFromString` from "@harmoniclabs/plutus-data"
 // but no way to reliably retreive the offset
 // seo
-function dataFromStringWithOffset( str: string ): { data: Data, offset: number }
+function myDataFromStringWithOffset( str: string ): { data: Data, offset: number }
 {
     const original = str;
     const openIdx = str.indexOf("(");
