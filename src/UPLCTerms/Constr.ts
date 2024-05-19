@@ -11,9 +11,9 @@ export class Constr
     public index: bigint;
     public terms: UPLCTerm[];
 
-    constructor( index: bigint, terms: UPLCTerm[] )
+    constructor( index: bigint | number, terms: UPLCTerm[] )
     {
-        this.index = index;
+        this.index = BigInt( index );
         this.terms = terms;
     }
 

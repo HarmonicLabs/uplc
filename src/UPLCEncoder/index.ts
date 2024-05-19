@@ -308,6 +308,41 @@ export class UPLCEncoder
     
     encodeApplicationTerm( app: Application ): BitStream
     {
+        // if can use case/constr terms
+        if( this._ctx.is_v3_friendly )
+        {
+            const args: UPLCTerm[] = [];
+            let term: UPLCTerm = app;
+    
+            while( term instanceof Application )
+            {
+                // prepend element to keep same order
+                args.unshift( term.argTerm );
+                term = term.funcTerm;
+            }
+    
+            // and we have more than 2 consecutive applications
+            if( args.length > 2 )
+            {
+                // use case and constr so that it costs
+                // as much as only 2 applications
+                return this.encodeCase(
+                    new Case(
+                        new Constr(
+                            BigInt(0),
+                            args
+                        ),
+                        // only one continutation; the last func term
+                        // (the one that expects the arguments)
+                        [ term ]
+                    )
+                );
+            }
+            // else continue with normal application encoding
+        }
+
+        // normal application encoding
+        // always used in v1 and v2
         const result = Application.UPLCTag;
         this._ctx.incrementLengthBy( result.length );
 
@@ -648,7 +683,12 @@ export class UPLCEncoder
 
     encodeConstr( constr: Constr ): BitStream
     {
-        if( !this._ctx.is_v3_friendly ) this._ctx.updateVersion( new UPLCVersion( 1, 1, 0 ) );;
+        if( !this._ctx.is_v3_friendly )
+        throw new Error(
+            "'Constr' term found using UPLC version " +
+            this._ctx.version.toString() +
+            "; maybe you wanted to use version 1.1.0 or higher?"
+        );
 
         const result = Constr.UPLCTag;
         result.append(
@@ -663,7 +703,12 @@ export class UPLCEncoder
 
     encodeCase( caseTerm: Case ): BitStream
     {
-        if( !this._ctx.is_v3_friendly ) this._ctx.updateVersion( new UPLCVersion( 1, 1, 0 ) );;
+        if( !this._ctx.is_v3_friendly )
+        throw new Error(
+            "'Case' term found using UPLC version " +
+            this._ctx.version.toString() +
+            "; maybe you wanted to use version 1.1.0 or higher?"
+        );
 
         const result = Case.UPLCTag;
         this._ctx.incrementLengthBy( result.length );
