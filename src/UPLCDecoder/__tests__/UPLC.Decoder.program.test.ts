@@ -1,5 +1,7 @@
+import { writeFileSync } from "fs";
 import { UPLCDecoder } from ".."
 import { fromHex } from "@harmoniclabs/uint8array-utils";
+import { prettyUPLC } from "../../UPLCTerm/UPLCTerm";
 
 
 describe("decode program", () => {

@@ -169,7 +169,7 @@ export const constT : Readonly<{
     unit: ConstType
     bool: ConstType
     listOf: ( tyArg: ConstType ) => [ ConstTyTag.list, ...ConstType ]
-    pairOf: ( tyArg1: ConstType, tyArg2: ConstType ) => [ ConstTyTag.pair , ...ConstType, ...ConstType ]
+    pairOf: ( tyArg1: ConstType, tyArg2: ConstType ) => [ ConstTyTag.pair , ...ConstType /*, ...ConstType*/ ]
     data: ConstType,
     bls12_381_G1_element: ConstType
     bls12_381_G2_element: ConstType
@@ -191,7 +191,7 @@ export const constT : Readonly<{
         return Object.freeze([ ConstTyTag.list, ...tyArg ]) as any;
     },
     
-    pairOf: ( tyArg1: ConstType, tyArg2: ConstType ) : [ ConstTyTag.pair , ...ConstType, ...ConstType ]  => {
+    pairOf: ( tyArg1: ConstType, tyArg2: ConstType ) : [ ConstTyTag.pair , ...ConstType/*, ...ConstType*/ ]  => {
         assert(
             isWellFormedConstType( tyArg1 ) && isWellFormedConstType( tyArg2 ),
             "provided argument to 'constT.pairOf' should be a well formed type, try using types exposed by  the 'constT' object itself"

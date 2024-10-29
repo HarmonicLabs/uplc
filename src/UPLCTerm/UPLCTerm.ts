@@ -267,17 +267,20 @@ export function prettyUPLC( term: UPLCTerm, _indent: number = 2 ): string
         }
         if( t instanceof Constr )
         {
+            if( t.terms.length === 0 ) 
+            return indent + "(constr " + t.index.toString() + ")";
+            
             const nextIndent = indent + indentStr;
-            return indent + "(constr " + t.index.toString() + "\n" +
+            return indent + "(constr " + t.index.toString() +
                 nextIndent + "[" + t.terms.map( term => _prettyUPLC( term, dbn, depth + 2 ) ).join(",\n") + 
-                nextIndent + "]\n" +
+                nextIndent + "]" +
                 indent + ")";
         }
         if( t instanceof Case )
         {
             const nextIndent = indent + indentStr;
-            return indent + "(case\n" +
-            _prettyUPLC( t.constrTerm, dbn, depth + 1 ) + "\n" +
+            return indent + "(case" +
+            _prettyUPLC( t.constrTerm, dbn, depth + 1 ) +
             nextIndent + "[" +
             t.continuations.map( term => _prettyUPLC( term, dbn, depth + 2 ) ).join(",\n") +
             nextIndent + "]\n" +

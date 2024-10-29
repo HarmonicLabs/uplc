@@ -58,7 +58,7 @@ function serializeInt( int: bigint | number ): BitStream
         typeof int === "number" || typeof int === "bigint",
         "'serializeInt' only works for Signed Integer; " +
         "try using int.toSigned() if you are using a derived class; inpout was: " + int
-    )
+    );
 
     int = typeof int === "number" ? BigInt( int ) : int
     return serializeUInt(
@@ -178,6 +178,14 @@ export function serializeBuiltin( bn: Builtin ): BitStream
     return result;
 }
 
+export interface UPLCEncoderOptions {
+    trivialOptimization: boolean
+}
+
+export const defaultUPLCEncoderOptions: UPLCEncoderOptions = Object.freeze({
+    trivialOptimization: false
+});
+
 
 // ------------------------------------------------------------------------------------------------------------------- //
 // --------------------------------------------------- UPLCEncoder --------------------------------------------------- //
@@ -186,16 +194,23 @@ export function serializeBuiltin( bn: Builtin ): BitStream
 export class UPLCEncoder
 {
     private _ctx: UPLCSerializationContex
+    private _options: UPLCEncoderOptions
 
-    constructor()
+    constructor( options: UPLCEncoderOptions = defaultUPLCEncoderOptions )
     {
         this._ctx = new UPLCSerializationContex({
             currLength: 0
         });
+        this._options = options;
     }
 
-    compile( program: UPLCProgram ): BitStream
+    compile( program: UPLCProgram, options: UPLCEncoderOptions = defaultUPLCEncoderOptions ): BitStream
     {
+        this._options = {
+            ...this._options,
+            ...defaultUPLCEncoderOptions,
+            ...options
+        };
         const v = program.version
         this._ctx.updateVersion( v );
 
@@ -221,11 +236,9 @@ export class UPLCEncoder
         return result;
     }
     
-    static get compile(): ( program: UPLCProgram ) => BitStream
+    static compile( program: UPLCProgram, options: UPLCEncoderOptions = defaultUPLCEncoderOptions ): BitStream
     {
-        return ( program: UPLCProgram ) => {
-            return (new UPLCEncoder()).compile( program )
-        };
+        return (new UPLCEncoder( options )).compile( program, options );
     }
 
     /** always byte-alligned */
@@ -309,7 +322,10 @@ export class UPLCEncoder
     encodeApplicationTerm( app: Application ): BitStream
     {
         // if can use case/constr terms
-        if( this._ctx.is_v3_friendly )
+        if(
+            (this._options.trivialOptimization === true) &&
+            this._ctx.is_v3_friendly
+        )
         {
             const args: UPLCTerm[] = [];
             let term: UPLCTerm = app;
@@ -359,9 +375,12 @@ export class UPLCEncoder
 
     encodeConstTerm( uplcConst: UPLCConst ): BitStream
     {
+        // 4 bits
         const result = UPLCConst.UPLCTag
         
         result.append(
+            // ((1 + 4) * nTypes) bits
+            // 1 bit for the closing 0
             serializeConstType(
                 uplcConst.type
             )
@@ -649,7 +668,10 @@ export class UPLCEncoder
 
     encodeForceTerm( force: Force ): BitStream
     {
-        if( force.termToForce instanceof Delay )
+        if(
+            (this._options.trivialOptimization === true) &&
+            force.termToForce instanceof Delay
+        )
         {
             // cancels direct delays
             return this.encodeTerm( force.termToForce.delayedTerm );
@@ -662,7 +684,7 @@ export class UPLCEncoder
             this.encodeTerm(
                 force.termToForce
             )
-        )
+        );
 
         return result;
     }
@@ -750,9 +772,9 @@ export class UPLCEncoder
     }
 }
 
-export function compileUPLC( program: UPLCProgram ): BitStream
+export function compileUPLC( program: UPLCProgram, options: UPLCEncoderOptions = defaultUPLCEncoderOptions ): BitStream
 {
-    return (new UPLCEncoder()).compile( program );
+    return (new UPLCEncoder( options )).compile( program, options );
 }
 
 /**

@@ -86,7 +86,8 @@ describe("Application optimization v3", () => {
                 new UPLCProgram(
                     [1,1,0],
                     app3
-                )
+                ),
+                { trivialOptimization: true }
             ).toBuffer().buffer;
 
             const decoded = UPLCDecoder.parse(

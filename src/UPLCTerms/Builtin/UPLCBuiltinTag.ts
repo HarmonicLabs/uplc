@@ -155,7 +155,7 @@ export function getNRequiredForces( tag: UPLCBuiltinTag ): ( 0 | 1 | 2 )
 
     throw new Error(
         "'getNRequiredForces' did not match any tag; the input was: " + tag
-    )
+    );
 }
 
 export function isV1Supported( tag: UPLCBuiltinTag | UPLCBuiltinTagNumber ): boolean
