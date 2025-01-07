@@ -149,4 +149,17 @@ export class Builtin
     static get blake2b_224(): Builtin                       { return new Builtin( UPLCBuiltinTag.blake2b_224 ); }
     static get integerToByteString(): Builtin               { return new Builtin( UPLCBuiltinTag.integerToByteString ); }
     static get byteStringToInteger(): Builtin               { return new Builtin( UPLCBuiltinTag.byteStringToInteger ); }
+    static get andByteString(): Builtin                     { return new Builtin( UPLCBuiltinTag.andByteString ); }
+    static get orByteString(): Builtin                      { return new Builtin( UPLCBuiltinTag.orByteString ); }
+    static get xorByteString(): Builtin                     { return new Builtin( UPLCBuiltinTag.xorByteString ); }
+    static get complementByteString(): Builtin              { return new Builtin( UPLCBuiltinTag.complementByteString ); }
+    static get readBit(): Builtin                           { return new Builtin( UPLCBuiltinTag.readBit ); }
+    static get writeBits(): Builtin                         { return new Builtin( UPLCBuiltinTag.writeBits ); }
+    static get replicateByte(): Builtin                     { return new Builtin( UPLCBuiltinTag.replicateByte ); }
+    static get shiftByteString(): Builtin                   { return new Builtin( UPLCBuiltinTag.shiftByteString ); }
+    static get rotateByteString(): Builtin                  { return new Builtin( UPLCBuiltinTag.rotateByteString ); }
+    static get countSetBits(): Builtin                      { return new Builtin( UPLCBuiltinTag.countSetBits ); }
+    static get findFirstSetBit(): Builtin                   { return new Builtin( UPLCBuiltinTag.findFirstSetBit ); }
+    static get ripemd_160(): Builtin                        { return new Builtin( UPLCBuiltinTag.ripemd_160 ); }
+
 }

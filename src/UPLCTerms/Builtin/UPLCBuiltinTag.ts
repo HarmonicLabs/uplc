@@ -98,16 +98,41 @@ export enum UPLCBuiltinTag {
     blake2b_224                     = 72,
     // bitwise
     integerToByteString             = 73,
-    byteStringToInteger             = 74
+    byteStringToInteger             = 74,
+    // plomin (batch 5)
+    andByteString                   = 75,
+    orByteString                    = 76,
+    xorByteString                   = 77,
+    complementByteString            = 78,
+    readBit                         = 79,
+    writeBits                       = 80,
+    replicateByte                   = 81,
+    shiftByteString                 = 82,
+    rotateByteString                = 83,
+    countSetBits                    = 84,
+    findFirstSetBit                 = 85,
+    ripemd_160                      = 86
+}
+Object.freeze( UPLCBuiltinTag );
+
+function isNonNegativeInt( n: any ): n is number
+{
+    return (n >>> 0) === n;
 }
 
+const highestTag = Object.values( UPLCBuiltinTag )
+.reduce((max, tag) =>
+    isNonNegativeInt( tag ) ?
+    ( tag > max ? tag : max )
+    : max, 0
+);
 
 export function isUPLCBuiltinTag( tag: UPLCBuiltinTag | UPLCBuiltinTagNumber ): boolean
 {
     return (
-        Math.round( Math.abs( tag ) ) === tag // tag is a non-negative integer
+        isNonNegativeInt(tag) // tag is a non-negative integer
         &&
-        (tag >= 0 && tag <= 74)
+        tag <= highestTag
     );
 }
 
@@ -117,16 +142,6 @@ export function getNRequiredForces( tag: UPLCBuiltinTag ): ( 0 | 1 | 2 )
         isUPLCBuiltinTag( tag ),
         `in getNRequiredForces; the function is specific for UPLCBuiltinTags; input was: ${tag}`
     );
-
-    // tags from 0 to 25 and from 37 to 53 are all fixed in type; no forces requred
-    if(
-        tag <= 25 ||
-        // all fixed type after constrData 
-        tag >= UPLCBuiltinTag.constrData
-    ) 
-    {
-        return 0;
-    }
 
     // tags that do have one type parameter; 1 force
     if(
@@ -151,6 +166,16 @@ export function getNRequiredForces( tag: UPLCBuiltinTag ): ( 0 | 1 | 2 )
     )
     {
         return 2;
+    }
+
+    // tags from 0 to 25 and from 37 to 53 are all fixed in type; no forces requred
+    if(
+        tag <= 25 ||
+        // all fixed type after constrData 
+        tag >= UPLCBuiltinTag.constrData
+    ) 
+    {
+        return 0;
     }
 
     throw new Error(
@@ -252,6 +277,18 @@ export function builtinTagToString( tag: UPLCBuiltinTag ): string
             case UPLCBuiltinTag.blake2b_224             :           return "blake2b_224";
             case UPLCBuiltinTag.integerToByteString     :           return "integerToByteString";
             case UPLCBuiltinTag.byteStringToInteger     :           return "byteStringToInteger";
+            case UPLCBuiltinTag.andByteString           :           return "andByteString";
+            case UPLCBuiltinTag.orByteString            :           return "orByteString";
+            case UPLCBuiltinTag.xorByteString           :           return "xorByteString";
+            case UPLCBuiltinTag.complementByteString    :           return "complementByteString";
+            case UPLCBuiltinTag.readBit                 :           return "readBit";
+            case UPLCBuiltinTag.writeBits               :           return "writeBits";
+            case UPLCBuiltinTag.replicateByte           :           return "replicateByte";
+            case UPLCBuiltinTag.shiftByteString         :           return "shiftByteString";
+            case UPLCBuiltinTag.rotateByteString        :           return "rotateByteString";
+            case UPLCBuiltinTag.countSetBits            :           return "countSetBits";
+            case UPLCBuiltinTag.findFirstSetBit         :           return "findFirstSetBit";
+            case UPLCBuiltinTag.ripemd_160              :           return "ripemd_160";
 
             
             default:
@@ -341,6 +378,18 @@ export function builtinTagFromString( tag: string ): UPLCBuiltinTag
         case "blake2b_224":                        return UPLCBuiltinTag.blake2b_224;
         case "integerToByteString":                return UPLCBuiltinTag.integerToByteString
         case "byteStringToInteger":                return UPLCBuiltinTag.byteStringToInteger
+        case "andByteString":                      return UPLCBuiltinTag.andByteString
+        case "orByteString":                       return UPLCBuiltinTag.orByteString
+        case "xorByteString":                      return UPLCBuiltinTag.xorByteString
+        case "complementByteString":               return UPLCBuiltinTag.complementByteString
+        case "readBit":                            return UPLCBuiltinTag.readBit
+        case "writeBits":                          return UPLCBuiltinTag.writeBits
+        case "replicateByte":                      return UPLCBuiltinTag.replicateByte
+        case "shiftByteString":                    return UPLCBuiltinTag.shiftByteString
+        case "rotateByteString":                   return UPLCBuiltinTag.rotateByteString
+        case "countSetBits":                       return UPLCBuiltinTag.countSetBits
+        case "findFirstSetBit":                    return UPLCBuiltinTag.findFirstSetBit
+        case "ripemd_160":                         return UPLCBuiltinTag.ripemd_160
 
         
         default:
