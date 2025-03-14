@@ -1,6 +1,6 @@
 {
   "name": "@harmoniclabs/uplc",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "description": "",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -39,7 +39,7 @@
   "peerDependencies": {
     "@harmoniclabs/bytestring": "^1.0.0",
     "@harmoniclabs/cbor": "^1.3.0",
-    "@harmoniclabs/crypto": "^0.2.4",
+    "@harmoniclabs/crypto": "^0.3.0-dev0",
     "@harmoniclabs/pair": "^1.0.0",
     "@harmoniclabs/plutus-data": "^1.2.4"
   },
