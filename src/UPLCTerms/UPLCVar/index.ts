@@ -1,25 +1,31 @@
-import { BitStream } from "@harmoniclabs/bitstream";
+import { IUPLCTerm } from "../../UPLCTerm/UPLCTerm";
+import { UPLCTermTag } from "../../UPLCTerm/UPLCTermTag";
 import { CanBeUInteger, forceBigUInt } from "../../utils/ints";
-import { assert } from "../../utils/assert";
+
+export interface IUPLCVar
+{
+    readonly tag: UPLCTermTag.Var;
+    readonly deBruijn: bigint;
+}
 
 export class UPLCVar
+    implements IUPLCVar, IUPLCTerm
 {
-    static get UPLCTag(): BitStream
-    {
-        return BitStream.fromBinStr( "0000" );
-    }
+    // return BitStream.fromBinStr( "0000" );
+    static readonly UPLCTag: UPLCTermTag.Var = UPLCTermTag.Var;
+    readonly tag: UPLCTermTag.Var = UPLCTermTag.Var;
 
-    private _deBruijn: bigint;
-    get deBruijn(): bigint { return this._deBruijn; }
+    readonly deBruijn: bigint;
 
     constructor( deBruijn: CanBeUInteger )
     {
-        this._deBruijn = forceBigUInt( deBruijn );
+        this.deBruijn = BigInt( deBruijn );
 
-        assert(
-            this._deBruijn >= BigInt( 0 ),
+        if(!(
+            this.deBruijn >= BigInt( 0 )
+        )) throw new Error(
             "invalid deBruijn index; while creating 'UPLCVar' instance, deBruijn index was: "
-                + this._deBruijn
+            + this.deBruijn
         );
     }
 

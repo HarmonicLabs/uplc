@@ -1,12 +1,18 @@
 import { BitStream } from "@harmoniclabs/bitstream";
-import { UPLCTerm } from "../UPLCTerm/UPLCTerm";
+import { IUPLCTerm, UPLCTerm, UPLCTermObj } from "../UPLCTerm/UPLCTerm";
+import { UPLCTermTag } from "../UPLCTerm/UPLCTermTag";
 
+export interface ICase {
+    tag: UPLCTermTag.Case;
+    constrTerm: UPLCTermObj;
+    continuations: UPLCTermObj[];
+}
 export class Case
+    implements ICase, IUPLCTerm
 {
-    static get UPLCTag(): BitStream
-    {
-        return BitStream.fromBinStr("1001");
-    }
+    // return BitStream.fromBinStr("1001");
+    static UPLCTag: UPLCTermTag.Case = UPLCTermTag.Case;
+    readonly tag: UPLCTermTag.Case = UPLCTermTag.Case;
     
     public constrTerm: UPLCTerm;
     public continuations: UPLCTerm[];

@@ -30,38 +30,37 @@
  *  •   We provide two versions of the division and remainder operations for integers. These differ
  *      in their treatment of negative arguments.
  */
-import { BitStream } from "@harmoniclabs/bitstream";
 import { UPLCBuiltinTag, isUPLCBuiltinTag } from "./UPLCBuiltinTag";
-import { assert } from "../../utils/assert";
+import { UPLCTermTag } from "../../UPLCTerm/UPLCTermTag";
 
+export interface IBuiltin
+{
+    tag: UPLCTermTag.Builtin;
+    builtinTag: UPLCBuiltinTag;
+}
 
 export class Builtin
 {
-    static get UPLCTag(): BitStream
-    {
-        return BitStream.fromBinStr( "0111" );
-    }
+    // return BitStream.fromBinStr( "0111" );
+    static UPLCTag: UPLCTermTag.Builtin = UPLCTermTag.Builtin;
+    readonly tag: UPLCTermTag.Builtin = UPLCTermTag.Builtin;
 
-    private _tag: UPLCBuiltinTag;
-
-    get tag(): UPLCBuiltinTag
-    {
-        return this._tag;
-    }
+    public builtinTag: UPLCBuiltinTag;
 
     constructor( tag: UPLCBuiltinTag )
     {
-        assert(
-            isUPLCBuiltinTag( tag ),
+        if(!(
+            isUPLCBuiltinTag( tag )
+        )) throw new Error(
             "cannot instatinitate a 'Builtin' using tag: " + tag.toString()
         );
 
-        this._tag = tag;
+        this.builtinTag = tag;
     }
 
     clone(): Builtin
     {
-        return new Builtin( this.tag );
+        return new Builtin( this.builtinTag );
     }
 
     static get addInteger(): Builtin        { return new Builtin( UPLCBuiltinTag.addInteger ) }

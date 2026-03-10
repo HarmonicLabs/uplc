@@ -1,12 +1,18 @@
 import { BitStream } from "@harmoniclabs/bitstream";
-import { UPLCTerm } from "../UPLCTerm/UPLCTerm";
+import { IUPLCTerm, UPLCTerm, UPLCTermObj } from "../UPLCTerm/UPLCTerm";
+import { UPLCTermTag } from "../UPLCTerm/UPLCTermTag";
 
+export interface IConstr {
+    tag: UPLCTermTag.Constr;
+    index: bigint;
+    terms: UPLCTermObj[];
+}
 export class Constr
+    implements IConstr, IUPLCTerm
 {
-    static get UPLCTag(): BitStream
-    {
-        return BitStream.fromBinStr("1000");
-    }
+    // return BitStream.fromBinStr("1000");
+    static UPLCTag: UPLCTermTag.Constr = UPLCTermTag.Constr;
+    readonly tag: UPLCTermTag.Constr = UPLCTermTag.Constr;
     
     public index: bigint;
     public terms: UPLCTerm[];

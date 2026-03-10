@@ -31,9 +31,9 @@ function _showUPLC( t: UPLCTerm, dbn: number ): string
     if( t instanceof ErrorUPLC ) return "(error)";
     if( t instanceof Builtin )
     {
-        const nForces = getNRequiredForces( t.tag );
+        const nForces = getNRequiredForces( t.builtinTag );
 
-        return "(force ".repeat( nForces ) +`(builtin ${builtinTagToString( t.tag )})` + ')'.repeat( nForces )
+        return "(force ".repeat( nForces ) +`(builtin ${builtinTagToString( t.builtinTag )})` + ')'.repeat( nForces )
     }
     
     return "";
@@ -134,7 +134,7 @@ export function _parseUPLCText(
 
             if(
                 directChild instanceof Builtin &&
-                getNRequiredForces( directChild.tag ) === 1
+                getNRequiredForces( directChild.builtinTag ) === 1
             ) return {
                 term: directChild,
                 offset
@@ -143,7 +143,7 @@ export function _parseUPLCText(
             if(
                 directChild instanceof Force &&
                 directChild.termToForce instanceof Builtin &&
-                getNRequiredForces( directChild.termToForce.tag ) === 2
+                getNRequiredForces( directChild.termToForce.builtinTag ) === 2
             ) return {
                 term: directChild.termToForce,
                 offset

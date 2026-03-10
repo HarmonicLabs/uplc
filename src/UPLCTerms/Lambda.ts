@@ -1,12 +1,18 @@
 import { BitStream } from "@harmoniclabs/bitstream";
-import { UPLCTerm } from "../UPLCTerm/UPLCTerm";
+import { IUPLCTerm, UPLCTerm, UPLCTermObj } from "../UPLCTerm/UPLCTerm";
+import { UPLCTermTag } from "../UPLCTerm/UPLCTermTag";
+
+export interface ILambda {
+    tag: UPLCTermTag.Lambda;
+    body: UPLCTermObj;
+}
 
 export class Lambda
+    implements ILambda, IUPLCTerm
 {
-    static get UPLCTag(): BitStream
-    {
-        return BitStream.fromBinStr("0010");
-    }
+    // return BitStream.fromBinStr("0010");
+    static UPLCTag: UPLCTermTag = UPLCTermTag.Lambda;
+    readonly tag: UPLCTermTag.Lambda = UPLCTermTag.Lambda;
     
     public body : UPLCTerm;
 

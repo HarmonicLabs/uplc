@@ -1,22 +1,36 @@
-import { UPLCVar } from "../UPLCTerms/UPLCVar";
-import { Delay } from "../UPLCTerms/Delay";
-import { Lambda } from "../UPLCTerms/Lambda";
-import { Application } from "../UPLCTerms/Application";
-import { UPLCConst } from "../UPLCTerms/UPLCConst/UPLCConst";
-import { Force } from "../UPLCTerms/Force";
-import { ErrorUPLC } from "../UPLCTerms/ErrorUPLC";
-import { Builtin } from "../UPLCTerms/Builtin/Builtin";
+import { IUPLCVar, UPLCVar } from "../UPLCTerms/UPLCVar";
+import { Delay, IDelay } from "../UPLCTerms/Delay";
+import { ILambda, Lambda } from "../UPLCTerms/Lambda";
+import { Application, IApplication } from "../UPLCTerms/Application";
+import { IUPLCConst, UPLCConst } from "../UPLCTerms/UPLCConst/UPLCConst";
+import { Force, IForce } from "../UPLCTerms/Force";
+import { ErrorUPLC, IErrorUPLC } from "../UPLCTerms/ErrorUPLC";
+import { Builtin, IBuiltin } from "../UPLCTerms/Builtin/Builtin";
 import { ConstType, constListTypeUtils, constPairTypeUtils, constTypeToStirng, ConstTyTag, constTypeEq } from "../UPLCTerms/UPLCConst/ConstType";
 import { builtinTagToString, getNRequiredForces } from "../UPLCTerms/Builtin/UPLCBuiltinTag";
-import { ConstValue, canConstValueBeOfConstType, eqConstValue, isConstValueInt } from "../UPLCTerms/UPLCConst/ConstValue";
-import { ByteString } from "@harmoniclabs/bytestring";
-import { Pair } from "@harmoniclabs/pair";
+import { ConstValue, canConstValueBeOfConstType, eqConstValue, isConstPair, isConstValueInt } from "../UPLCTerms/UPLCConst/ConstValue";
 import { isData, dataToCbor } from "@harmoniclabs/plutus-data";
-import { assert } from "../utils/assert";
-import { Constr } from "../UPLCTerms/Constr";
-import { Case } from "../UPLCTerms/Case";
+import { Constr, IConstr } from "../UPLCTerms/Constr";
+import { Case, ICase } from "../UPLCTerms/Case";
 import { bls12_381_G1_compress, bls12_381_G2_compress, isBlsG1, isBlsG2, isBlsResult } from "@harmoniclabs/crypto";
 import { toHex } from "@harmoniclabs/uint8array-utils";
+import { UPLCTermTag } from "./UPLCTermTag";
+
+export interface IUPLCTerm {
+    tag: UPLCTermTag;
+}
+
+export type UPLCTermObj
+    = IUPLCVar
+    | IDelay
+    | ILambda
+    | IApplication
+    | IUPLCConst
+    | IForce
+    | IErrorUPLC
+    | IBuiltin
+    | IConstr
+    | ICase;
 
 export type UPLCTerm 
     = UPLCVar
@@ -61,6 +75,7 @@ export function isUPLCTerm( t: object ): t is UPLCTerm
  * **_O(n)_**
  * @param {UPLCTerm} t ```UPLCTerm``` to check 
  * @returns {boolean} ```true``` if the AST contains only plutus-core terms, ```false``` otherwise
+ * @deprecated use `isUPLCTerm`
  */
 export function isPureUPLCTerm( t: UPLCTerm ): t is PureUPLCTerm
 {
@@ -82,8 +97,9 @@ export function isPureUPLCTerm( t: UPLCTerm ): t is PureUPLCTerm
 
 function _isClosedTerm( maxDeBruijn: bigint, t: UPLCTerm ): boolean
 {
-    assert(
-        isUPLCTerm( t ),
+    if(!(
+        isUPLCTerm( t )
+    )) throw new Error(
         "'isClosedTerm' functions only works on **raw** UPLCTerms"
     );
 
@@ -145,7 +161,7 @@ export function showUPLCConstValue( v: ConstValue ): string
     if( isConstValueInt( v ) ) return v.toString();
     if( typeof v === "string" ) return `"${v}"`;
     if( typeof v === "boolean" )  return v ? "True" : "False";
-    if( v instanceof ByteString ) return "#" + v.toString();
+    if( v instanceof Uint8Array ) return "#" + toHex( v );
     if( isData( v ) ) return v.toString();
 
     if( isBlsG1( v ) ) return `0x${toHex(bls12_381_G1_compress( v ))}`;
@@ -153,7 +169,7 @@ export function showUPLCConstValue( v: ConstValue ): string
     if( isBlsResult( v ) ) return JSON.stringify( v, ( k, v ) => typeof v === "bigint" ? v.toString() : v );
 
     if( Array.isArray( v ) ) return "[" + v.map( showUPLCConstValue ).join(',') + "]";
-    if( v instanceof Pair ) return `(${showUPLCConstValue(v.fst)},${showUPLCConstValue(v.snd)})`;
+    if( isConstPair( v ) ) return `(${showUPLCConstValue(v.fst)},${showUPLCConstValue(v.snd)})`;
     
     throw new Error(
         "'showUPLCConstValue' did not matched any possible constant value"
@@ -208,9 +224,9 @@ function _showUPLC( t: UPLCTerm, dbn: number ): string
     if( t instanceof ErrorUPLC ) return "(error)";
     if( t instanceof Builtin )
     {
-        const nForces = getNRequiredForces( t.tag );
+        const nForces = getNRequiredForces( t.builtinTag );
 
-        return "(force ".repeat( nForces ) +`(builtin ${builtinTagToString( t.tag )})` + ')'.repeat( nForces )
+        return "(force ".repeat( nForces ) +`(builtin ${builtinTagToString( t.builtinTag )})` + ')'.repeat( nForces )
     }
     if( t instanceof Constr )
     {
@@ -261,9 +277,9 @@ export function prettyUPLC( term: UPLCTerm, _indent: number = 2 ): string
         if( t instanceof ErrorUPLC ) return "(error)";
         if( t instanceof Builtin )
         {
-            const nForces = getNRequiredForces( t.tag );
+            const nForces = getNRequiredForces( t.builtinTag );
     
-            return indent + "(force ".repeat( nForces ) +`(builtin ${builtinTagToString( t.tag )})` + ')'.repeat( nForces )
+            return indent + "(force ".repeat( nForces ) +`(builtin ${builtinTagToString( t.builtinTag )})` + ')'.repeat( nForces )
         }
         if( t instanceof Constr )
         {
@@ -301,8 +317,9 @@ export function prettyUPLC( term: UPLCTerm, _indent: number = 2 ): string
  */
 export function hasAnyRefsInTerm( varDeBruijn: number | bigint, t: UPLCTerm ): boolean
 {
-    assert(
-        isUPLCTerm( t ),
+    if(!(
+        isUPLCTerm( t )
+    )) throw new Error(
         "'getUPLCVarRefsInTerm' expects an UPLCTerms"
     );
 
@@ -332,8 +349,9 @@ export function hasAnyRefsInTerm( varDeBruijn: number | bigint, t: UPLCTerm ): b
  */
 export function hasMultipleRefsInTerm( varDeBruijn: number | bigint, t: Readonly<UPLCTerm> ): boolean
 {
-    assert(
-        isUPLCTerm( t ),
+    if(!(
+        isUPLCTerm( t )
+    )) throw new Error(
         "'getUPLCVarRefsInTerm' expects an UPLCTerms"
     );
 
@@ -393,8 +411,9 @@ export function getUPLCVarRefsInTerm( term: UPLCTerm, varDeBruijn: number | bigi
 }
 function _getUPLCVarRefsInTerm( dbn: bigint, t: UPLCTerm, countedUntilNow: number ): number
 {
-    assert(
-        isUPLCTerm( t ),
+    if(!(
+        isUPLCTerm( t )
+    )) throw new Error(
         "'getUPLCVarRefsInTerm' expects an UPLCTerms"
     );
 
@@ -448,7 +467,7 @@ export function eqUPLCTerm( a: UPLCTerm, b: UPLCTerm ): boolean
         })()
     );
     if( a instanceof Force && b instanceof Force ) return eqUPLCTerm( a.termToForce, b.termToForce );
-    if( a instanceof Builtin && b instanceof Builtin ) return a.tag === b.tag;
+    if( a instanceof Builtin && b instanceof Builtin ) return a.builtinTag === b.builtinTag;
     
     if( a instanceof Constr && b instanceof Constr )
     return (

@@ -13,12 +13,10 @@ import { UPLCConst } from "../UPLCTerms/UPLCConst/UPLCConst";
 import { ConstType, constListTypeUtils, constPairTypeUtils, constT, constTypeEq, ConstTyTag, isWellFormedConstType } from "../UPLCTerms/UPLCConst/ConstType";
 import { ConstValue, ConstValueList } from "../UPLCTerms/UPLCConst/ConstValue";
 import { fromHex, toHex, toUtf8 } from "@harmoniclabs/uint8array-utils";
-import { ByteString } from "@harmoniclabs/bytestring";
 import { Cbor, CborBytes, CborNegInt, CborObj } from "@harmoniclabs/cbor";
 import UPLCFlatUtils from "../utils/UPLCFlatUtils";
 import { bigintFromBuffer } from "@harmoniclabs/bigint-utils";
 import { dataFromCbor } from "@harmoniclabs/plutus-data";
-import { Pair } from "@harmoniclabs/pair";
 import { UPLCTermTag } from "../UPLCTerm/UPLCTermTag";
 import { Constr } from "../UPLCTerms/Constr";
 import { Case } from "../UPLCTerms/Case";
@@ -426,7 +424,7 @@ export class UPLCDecoder
                     }
                 }
 
-                return new ByteString(
+                return (
                     fromHex(
                         hexChunks.join("")
                     )
@@ -434,11 +432,11 @@ export class UPLCDecoder
             }
             if( constTypeEq( t, constT.str ) )
             {
-                return toUtf8( (readConstValueOfType( constT.byteStr ) as ByteString).toBuffer() );
+                return toUtf8( (readConstValueOfType( constT.byteStr ) as Uint8Array) );
             }
             if( constTypeEq( t, constT.data ) )
             {
-                let bytes = (readConstValueOfType( constT.byteStr ) as ByteString).toBuffer();
+                let bytes = (readConstValueOfType( constT.byteStr ) as Uint8Array);
 
                 return dataFromCbor( bytes );
             }
@@ -463,14 +461,14 @@ export class UPLCDecoder
             }
             if( t[0] === ConstTyTag.pair )
             {
-                return new Pair(
-                    readConstValueOfType(
+                return ({
+                    fst: readConstValueOfType(
                         constPairTypeUtils.getFirstTypeArgument( t as any )
                     ),
-                    readConstValueOfType(
+                    snd: readConstValueOfType(
                         constPairTypeUtils.getSecondTypeArgument( t as any )
                     )
-                );
+                });
             };
 
             throw new Error(

@@ -1,15 +1,17 @@
-import { ByteString } from "@harmoniclabs/bytestring";
-import { Pair } from "@harmoniclabs/pair";
 import { Data, isData, eqData } from "@harmoniclabs/plutus-data";
 import { ConstType, constTypeEq, constT, constTypeToStirng, ConstTyTag, isWellFormedConstType, constListTypeUtils, constPairTypeUtils } from "../ConstType";
 import { uint8ArrayEq } from "@harmoniclabs/uint8array-utils";
-import { assert } from "../../../utils/assert";
 import { BlsG1, BlsG2, BlsResult, bls12_381_G1_equal, bls12_381_G2_equal, bls12_381_eqMlResult, isBlsG1, isBlsG2, isBlsResult } from "@harmoniclabs/crypto";
+import { isObject } from "@harmoniclabs/obj-utils";
 
+export type Pair<F,S> = {
+    fst: F;
+    snd: S;
+}
 
 export type ConstValueList
     = (number | bigint)[]
-    | ByteString[]
+    | Uint8Array[]
     | string[]
     | undefined[]
     | ConstValueList[]
@@ -21,12 +23,12 @@ export type ConstValueList
 
 export type ConstValue
     = number | bigint
-    | ByteString 
+    | Uint8Array 
     | string
     | undefined 
     | boolean
     | ConstValueList
-    | Pair<ConstValue,ConstValue>
+    | Pair<any, any>
     | Data
     | BlsG1
     | BlsG2
@@ -42,17 +44,24 @@ export function isConstValueInt( n: any ): n is ( number | bigint )
     );
 }
 
+export function isConstPair( val: any ): val is Pair<any, any>
+{
+    return (
+        isObject( val ) &&
+        "fst" in val && "snd" in val
+        // isConstValue( val.fst ) && isConstValue( val.snd )
+    );
+}
 export function isConstValue( value: any ): value is ConstValue
 {
     return (
         value === undefined                                                     ||
         isConstValueInt( value )                                                ||
-        (value instanceof ByteString && ByteString.isStrictInstance( value ) )  ||
+        (value instanceof Uint8Array )                                          ||
         typeof value === "string"                                               ||
         typeof value === "boolean"                                              ||
         isConstValueList( value )                                               ||
-        (Pair.isStrictInstance( value ) &&
-            isConstValue( value.fst ) && isConstValue( value.snd ))             ||
+        ( isConstPair( value ) && isConstValue( value.fst ) && isConstValue(value.snd) ) ||
         isData( value )                                                         ||
         isBlsG1( value )                                                        ||
         isBlsG2( value )                                                        ||
@@ -62,6 +71,7 @@ export function isConstValue( value: any ): value is ConstValue
 
 export function eqConstValue( a: ConstValue, b: ConstValue ): boolean
 {
+    if( a === b ) return true;
     if( a === undefined ) return b === undefined;
 
     if(!(
@@ -73,9 +83,9 @@ export function eqConstValue( a: ConstValue, b: ConstValue ): boolean
         (typeof b === "number" || typeof b == "bigint" ) &&
         BigInt( a ) === BigInt( b )
     );
-    if( a instanceof ByteString ) return (
-        b instanceof ByteString &&
-        uint8ArrayEq( a.toBuffer(), b.toBuffer() )
+    if( a instanceof Uint8Array ) return (
+        b instanceof Uint8Array &&
+        uint8ArrayEq( a, b )
     );
     if( typeof a === "string" ) return (
         typeof b === "string" &&
@@ -93,8 +103,8 @@ export function eqConstValue( a: ConstValue, b: ConstValue ): boolean
     if( isData(a) ) return (
         isData( b ) && eqData( a, b )
     );
-    if( a instanceof Pair ) return (
-        b instanceof Pair &&
+    if( isConstPair( a ) ) return (
+        isConstPair( b ) &&
         eqConstValue( a.fst, b.fst ) &&
         eqConstValue( a.snd, b.snd )
     );
@@ -116,8 +126,9 @@ export function eqConstValue( a: ConstValue, b: ConstValue ): boolean
  */
 export function inferConstTypeFromConstValue( val: ConstValue ): (ConstType | undefined)
 {
-    assert(
-        isConstValue( val ),
+    if(!(
+        isConstValue( val )
+    )) throw new Error(
         "'inferConstTypeFromConstValue' expects a valid 'ConstValue' type, input was: " + val
     );
 
@@ -125,7 +136,7 @@ export function inferConstTypeFromConstValue( val: ConstValue ): (ConstType | un
     
     if( isConstValueInt( val ) ) return constT.int;
 
-    if( val instanceof ByteString && ByteString.isStrictInstance( val ) ) return constT.byteStr;
+    if( val instanceof Uint8Array ) return constT.byteStr;
 
     if( typeof val === "string" ) return constT.str;
 
@@ -150,20 +161,21 @@ export function inferConstTypeFromConstValue( val: ConstValue ): (ConstType | un
 
         if( firstElemTy === undefined ) return undefined;
 
-        assert(
+        if(!(
             (val as ConstValue[]).every(
                 listElem => canConstValueBeOfConstType(
                     listElem,
                     firstElemTy as ConstType
                 )
-            ),
+            )
+        )) throw new Error(
             "'inferConstTypeFromConstValue': incongruent elements of constant list"
         );
 
         return constT.listOf( firstElemTy );
     }
 
-    if( val instanceof Pair && Pair.isStrictInstance( val ) )
+    if( isConstPair( val ) )
     {
         const fstTy = inferConstTypeFromConstValue( val.fst );
         if( fstTy === undefined ) return undefined;
@@ -196,19 +208,21 @@ export function inferConstTypeFromConstValueOrDefault( value: ConstValue, defaul
     // it was not possible to infer the value;
 
     // assert the provided default can actually have values
-    assert(
+    if(!(
         isWellFormedConstType(
             defaultTy
-        ),
+        )
+    )) throw new Error(
         "the provided 'defaultTy' is not a well formed constant type; try using the exported 'constT' object to be sure it is well formed"
     );
 
     // assert the default type is ok for the provided value
-    assert(
+    if(!(
         canConstValueBeOfConstType(
             value,
             defaultTy
-        ),
+        )
+    )) throw new Error(
         "the provided default ConstType is not adeguate for the provided ConstValue, given inputs: [ " +
         (value?.toString() ?? "undefined") + " , " +
         constTypeToStirng( defaultTy ) + " ]"
@@ -223,7 +237,7 @@ export function canConstValueBeOfConstType( val: Readonly<ConstValue>, ty: Reado
 
     if( constTypeEq( ty, constT.unit ) )        return val === undefined;
     if( constTypeEq( ty, constT.bool ) )        return typeof val === "boolean";
-    if( constTypeEq( ty, constT.byteStr ) )     return (val instanceof ByteString && ByteString.isStrictInstance( val ) );
+    if( constTypeEq( ty, constT.byteStr ) )     return val instanceof Uint8Array;
     if( constTypeEq( ty, constT.data ) )        return val === undefined ? false : isData( val );
     if( constTypeEq( ty, constT.int ) )         return isConstValueInt( val );
     if( constTypeEq( ty, constT.str ) )         return typeof val === "string";
@@ -242,7 +256,7 @@ export function canConstValueBeOfConstType( val: Readonly<ConstValue>, ty: Reado
         );
     if( ty[0] === ConstTyTag.pair )
         return (
-            val instanceof Pair && Pair.isStrictInstance( val ) &&
+            isConstPair( val ) &&
             canConstValueBeOfConstType( val.fst, constPairTypeUtils.getFirstTypeArgument( ty ) ) &&
             canConstValueBeOfConstType( val.snd, constPairTypeUtils.getSecondTypeArgument( ty ) )
         );

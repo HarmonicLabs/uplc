@@ -1,35 +1,29 @@
-import { BitStream } from "@harmoniclabs/bitstream";
-import { ByteString } from "@harmoniclabs/bytestring";
-import { Pair } from "@harmoniclabs/pair";
 import { Data } from "@harmoniclabs/plutus-data";
 import { ConstTyTag, ConstType, constPairTypeUtils, constT, constTypeEq, constTypeToStirng, isWellFormedConstType } from "./ConstType";
-import { ConstValue, canConstValueBeOfConstType, ConstValueList } from "./ConstValue";
-import { assert } from "../../utils/assert";
+import { ConstValue, canConstValueBeOfConstType, ConstValueList, Pair } from "./ConstValue";
 import { BlsG1, BlsG2, BlsResult } from "@harmoniclabs/crypto";
+import { UPLCTermTag } from "../../UPLCTerm/UPLCTermTag";
+import { IUPLCTerm } from "../../UPLCTerm/UPLCTerm";
 
+export interface IUPLCConst {
+    tag: UPLCTermTag.Const;
+    type: ConstType;
+    value: ConstValue;
+}
 
 export class UPLCConst
+    implements IUPLCConst, IUPLCTerm
 {
-    static get UPLCTag(): BitStream
-    {
-        return BitStream.fromBinStr( "0100" );
-    };
+    // return BitStream.fromBinStr( "0100" );
+    static UPLCTag: UPLCTermTag.Const = UPLCTermTag.Const;
+    readonly tag: UPLCTermTag.Const = UPLCTermTag.Const;
 
-    private _type: ConstType
-    get type(): ConstType
-    {
-        // clone
-        return this._type.map( tag => tag ) as ConstType;
-    }
+    public type: ConstType
 
-    private _value: ConstValue
-    get value(): ConstValue
-    {
-        return this._value;
-    }
+    public value: ConstValue
 
     constructor( type: ConstType, value: number | bigint )
-    constructor( type: ConstType, value: ByteString )
+    constructor( type: ConstType, value: Uint8Array )
     constructor( type: ConstType, value: string )
     constructor( type: ConstType, value?: undefined )
     constructor( type: ConstType, value: boolean )
@@ -44,13 +38,15 @@ export class UPLCConst
         value: ConstValue
     )
     {
-        assert(
-            isWellFormedConstType( typeTag ),
+        if(!(
+            isWellFormedConstType( typeTag )
+        )) throw new Error(
             "trying to construct an UPLC constant with an invalid type; input type: " + constTypeToStirng( typeTag )
         );
 
-        assert(
-            canConstValueBeOfConstType( value, typeTag ),
+        if(!(
+            canConstValueBeOfConstType( value, typeTag )
+        )) throw new Error(
             `trying to construct an UPLC constant with an invalid value for type "${constTypeToStirng( typeTag )}";
              input value was: ${value}`
         )
@@ -80,8 +76,8 @@ export class UPLCConst
             (value as Pair<any,any>).snd = BigInt( (value as Pair<any,any>).snd );
         }
         
-        this._type = typeTag;
-        this._value = value;
+        this.type = typeTag;
+        this.value = value;
     }
 
     clone(): UPLCConst
@@ -99,7 +95,7 @@ export class UPLCConst
         return new UPLCConst( constT.int , int );
     }
 
-    static byteString( bs: ByteString ): UPLCConst
+    static byteString( bs: Uint8Array ): UPLCConst
     {
         return new UPLCConst( constT.byteStr, bs );
     }
@@ -131,7 +127,7 @@ export class UPLCConst
     {
         return function ( first: ConstValue, second: ConstValue ): UPLCConst
         {
-            return new UPLCConst( constT.pairOf( typeArgFirst, typeArgSecond ), new Pair( first, second ) );
+            return new UPLCConst( constT.pairOf( typeArgFirst, typeArgSecond ), {fst: first, snd: second} );
         };
     }
 

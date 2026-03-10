@@ -1,11 +1,20 @@
 import { BitStream } from "@harmoniclabs/bitstream";
+import { UPLCTermTag } from "../UPLCTerm/UPLCTermTag";
+import { IUPLCTerm } from "../UPLCTerm/UPLCTerm";
+
+export interface IErrorUPLC
+{
+    tag: UPLCTermTag.Error;
+    msg?: string;
+    addInfos?: object;
+}
 
 export class ErrorUPLC
+    implements IErrorUPLC, IUPLCTerm
 {
-    static get UPLCTag(): BitStream
-    {
-        return BitStream.fromBinStr( "0110" );
-    } 
+    // return BitStream.fromBinStr( "0110" );
+    static UPLCTag: UPLCTermTag.Error = UPLCTermTag.Error;
+    readonly tag: UPLCTermTag.Error = UPLCTermTag.Error;
 
     public msg?: string;
     public addInfos?: object

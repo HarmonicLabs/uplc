@@ -1,12 +1,19 @@
 import { BitStream } from "@harmoniclabs/bitstream";
-import { UPLCTerm } from "../UPLCTerm/UPLCTerm";
+import { IUPLCTerm, UPLCTerm, UPLCTermObj } from "../UPLCTerm/UPLCTerm";
+import { UPLCTermTag } from "../UPLCTerm/UPLCTermTag";
+
+export interface IDelay
+{
+    readonly tag: UPLCTermTag.Delay;
+    readonly delayedTerm: UPLCTermObj;
+}
 
 export class Delay
+    implements IDelay, IUPLCTerm
 {
-    static get UPLCTag(): BitStream
-    {
-        return BitStream.fromBinStr( "0001" );
-    }
+    // return BitStream.fromBinStr( "0001" );
+    static UPLCTag: UPLCTermTag = UPLCTermTag.Delay;
+    readonly tag: UPLCTermTag.Delay = UPLCTermTag.Delay;
 
     public delayedTerm: UPLCTerm;
 

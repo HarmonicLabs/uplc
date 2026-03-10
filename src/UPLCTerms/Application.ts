@@ -1,50 +1,36 @@
-import { UPLCTerm } from "../UPLCTerm/UPLCTerm";
-import { UPLCVar } from "./UPLCVar";
-import { Lambda } from "./Lambda";
-import { Builtin } from "./Builtin/Builtin";
-import { Force } from "./Force";
-import { BitStream } from "@harmoniclabs/bitstream";
+import { IUPLCTerm, UPLCTerm, UPLCTermObj } from "../UPLCTerm/UPLCTerm";
+import { UPLCTermTag } from "../UPLCTerm/UPLCTermTag";
 
-export type UPLCApplicationBody = UPLCVar | Lambda | Application | Builtin | Force
-
-export function isUPLCApplicationBody( uplc: UPLCTerm ): uplc is UPLCApplicationBody
-{
-    const proto = Object.getPrototypeOf( uplc );
-
-    // only strict instances
-    return (
-        proto === UPLCVar.prototype         ||
-        proto === Lambda.prototype          ||
-        proto === Application.prototype     ||
-        proto === Force.prototype           ||
-        proto === Builtin.prototype
-    );
+export interface IApplication {
+    tag: UPLCTermTag.Application;
+    func: UPLCTermObj;
+    arg: UPLCTermObj;
 }
 
 export class Application
+    implements IApplication, IUPLCTerm
 {
-    static get UPLCTag(): BitStream
-    {
-        return BitStream.fromBinStr( "0011" );
-    }
+    // return BitStream.fromBinStr( "0011" );
+    static UPLCTag: UPLCTermTag.Application = UPLCTermTag.Application;
+    readonly tag: UPLCTermTag.Application = UPLCTermTag.Application;
 
-    public funcTerm: UPLCTerm
-    public argTerm : UPLCTerm;
+    public func: UPLCTerm
+    public arg : UPLCTerm;
     
     constructor(
         func: UPLCTerm,
         arg: UPLCTerm
     )
     {
-        this.funcTerm = func;
-        this.argTerm = arg;
+        this.func = func;
+        this.arg = arg;
     }
 
     clone(): Application
     {
         return new Application(
-            this.funcTerm.clone(),
-            this.argTerm.clone()
+            this.func.clone(),
+            this.arg.clone()
         );
     }
 }

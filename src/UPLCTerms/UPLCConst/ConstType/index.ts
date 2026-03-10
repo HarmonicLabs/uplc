@@ -1,4 +1,3 @@
-import { assert } from "../../../utils/assert";
 
 export enum ConstTyTag {
     int = 0,
@@ -76,11 +75,10 @@ export function isWellFormedConstType( type: any/*ConstType | ConstTyTag[]*/ ): 
 
     function topStackMinusOne()
     {
-        assert(
-            stack.length > 0,
-            new Error(
-                "while calling 'topStackMinusOne' in 'ConstEmptyList._isWellFormedListType'; stack was empty"
-            )
+        if(!(
+            stack.length > 0
+        )) throw new Error(
+            "while calling 'topStackMinusOne' in 'ConstEmptyList._isWellFormedListType'; stack was empty"
         );
 
         const missingTyArgsToProvide = stack[ stack.length - 1 ] - 1;
@@ -183,8 +181,9 @@ export const constT : Readonly<{
     bool:       Object.freeze([ ConstTyTag.bool ]),
     
     listOf: ( tyArg: ConstType ) : [ ConstTyTag.list, ...ConstType ] => {
-        assert(
-            isWellFormedConstType( tyArg ),
+        if(!(
+            isWellFormedConstType( tyArg )
+        )) throw new Error(
             "provided argument to 'constT.listOf' should be a well formed type, try using types exposed by  the 'constT' object itself"
         );
 
@@ -192,8 +191,9 @@ export const constT : Readonly<{
     },
     
     pairOf: ( tyArg1: ConstType, tyArg2: ConstType ) : [ ConstTyTag.pair , ...ConstType/*, ...ConstType*/ ]  => {
-        assert(
-            isWellFormedConstType( tyArg1 ) && isWellFormedConstType( tyArg2 ),
+        if(!(
+            isWellFormedConstType( tyArg1 ) && isWellFormedConstType( tyArg2 )
+        )) throw new Error(
             "provided argument to 'constT.pairOf' should be a well formed type, try using types exposed by  the 'constT' object itself"
         );
 
@@ -271,8 +271,9 @@ export function constTypeToStirng( ty: ConstType ): string
 
 function getConstListTypeArgument( listTy: [ ConstTyTag.list, ...ConstType ] ) : ConstType
 {
-    assert(
-        listTy.length > 0 && listTy[0] === ConstTyTag.list && isWellFormedConstType( listTy ),
+    if(!(
+        listTy.length > 0 && listTy[0] === ConstTyTag.list && isWellFormedConstType( listTy )
+    )) throw new Error(
         "in 'constListTypeUtils.getTypeArgument', input type was not a valid list type"
     );
 
@@ -281,8 +282,9 @@ function getConstListTypeArgument( listTy: [ ConstTyTag.list, ...ConstType ] ) :
 
 function getNonWellFormedConstListTypeArgument( listTy: [ ConstTyTag.list, ...ConstType ] ) : (ConstType | undefined)
 {
-    assert(
-        listTy.length > 0 && listTy[0] === ConstTyTag.list,
+    if(!(
+        listTy.length > 0 && listTy[0] === ConstTyTag.list
+    )) throw new Error(
         "in 'constListTypeUtils.getTypeArgument', input type was not a valid list type"
     );
 
@@ -349,8 +351,9 @@ export const constListTypeUtils = Object.freeze({
 
 function getConstPairFirstTypeArgument( pairTy: [ ConstTyTag.pair, ...ConstType ] | ConstType ) : ConstType
 {
-    assert(
-        pairTy.length > 0 && pairTy[0] === ConstTyTag.pair && isWellFormedConstType( pairTy ),
+    if(!(
+        pairTy.length > 0 && pairTy[0] === ConstTyTag.pair && isWellFormedConstType( pairTy )
+    )) throw new Error(
         "in 'constPairTypeUtils.getFirstTypeArgument', input type was not a valid pair type"
     );
 
@@ -424,8 +427,9 @@ function getConstPairFirstTypeArgument( pairTy: [ ConstTyTag.pair, ...ConstType 
 function getConstPairSecondTypeArgument( pairTy: [ ConstTyTag.pair, ...ConstType ] | ConstType ) : ConstType
 {
     /*
-    assert(
-        pairTy.length > 0 && pairTy[0] === ConstTyTag.pair && isWellFormedConstType( pairTy ),
+    if(!(
+        pairTy.length > 0 && pairTy[0] === ConstTyTag.pair && isWellFormedConstType( pairTy )
+    )) throw new Error(
         "in 'constPairTypeUtils.getFirstTypeArgument', input type was not a valid pair type"
     );*/ // made in the 'getConstPairFirstTypeArgument'call
 
@@ -437,8 +441,9 @@ function getConstPairSecondTypeArgument( pairTy: [ ConstTyTag.pair, ...ConstType
 
 function getNonWellFormedConstPairFirstTypeArgument( pairTy: [ ConstTyTag.pair, ...ConstType ] | ConstType ): (ConstType | undefined)
 {
-    assert(
-        pairTy.length > 0 && pairTy[0] === ConstTyTag.pair,
+    if(!(
+        pairTy.length > 0 && pairTy[0] === ConstTyTag.pair
+    )) throw new Error(
         "in 'constPairTypeUtils.getFirstTypeArgument', input type was not a valid pair type"
     );
 
@@ -496,8 +501,9 @@ function getNonWellFormedConstPairFirstTypeArgument( pairTy: [ ConstTyTag.pair, 
 function getNonWellFormedConstPairSecondTypeArgument( pairTy: [ ConstTyTag.pair, ...ConstType ] | ConstType ): (ConstType | undefined)
 {
     /*
-    assert(
-        pairTy.length > 0 && pairTy[0] === ConstTyTag.pair,
+    if(!(
+        pairTy.length > 0 && pairTy[0] === ConstTyTag.pair
+    )) throw new Error(
         "in 'constPairTypeUtils.getFirstTypeArgument', input type was not a valid pair type"
     );
     */ // made in the 'getNonWellFormedConstPairFirstTypeArgument' call
