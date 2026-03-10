@@ -27,7 +27,7 @@ test("getting started", () => {
 
     const compiled = compileUPLC( progr );
 
-    const buff = Buffer.from( compiled.toBuffer().buffer );
+    const buff = Buffer.from( compiled );
 
     const hex = buff.toString("hex");
 
@@ -46,6 +46,6 @@ test("getting started", () => {
             [1,0,0],
             body
         )
-    ).toBuffer().buffer;
+    );
 
 })

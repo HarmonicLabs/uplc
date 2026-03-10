@@ -15,7 +15,10 @@ export class UPLCVersion
             Number.isSafeInteger( this.major ) && (this.major & 0xff) === this.major
             && Number.isSafeInteger( this.minor ) && (this.minor & 0xff) === this.minor
             && Number.isSafeInteger( this.patch ) && (this.patch & 0xff) === this.patch
-        )) throw new Error("UPLCVersion: version numbers must be unsigned integers between 0 and 255 inclusive");
+        )) {
+            console.log( this );
+            throw new Error("UPLCVersion: version numbers must be unsigned integers between 0 and 255 inclusive");
+        }
     }
 
     isV3Friendly(): boolean

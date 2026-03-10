@@ -13,7 +13,7 @@ export class FlatDecoder {
         return new FlatDecoder(fromHex(hex));
     }
 
-    popBit(): number {
+    popBit(): 0 | 1 {
         if (this.bitAccessor < 1) {
             this.bitAccessor = 0b1000_0000;
             this.index += 1;
@@ -46,7 +46,7 @@ export class FlatDecoder {
             this.index += 1;
         }
         if (this.index < this.bytes.length) {
-            const ret = this.bytes[this.index]!;
+            const ret = this.bytes[this.index];
             this.index += 1;
             return (ret & 0xff);
         } else {

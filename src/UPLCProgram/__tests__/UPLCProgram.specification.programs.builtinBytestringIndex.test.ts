@@ -1,10 +1,10 @@
 import { BitStream } from "@harmoniclabs/bitstream"
-import { ByteString } from "@harmoniclabs/bytestring"
 import { UPLCProgram } from ".."
 import { UPLCEncoder } from "../../UPLCEncoder"
 import { Application } from "../../UPLCTerms/Application"
 import { Builtin } from "../../UPLCTerms/Builtin"
 import { UPLCConst } from "../../UPLCTerms/UPLCConst"
+import { fromHex } from "@harmoniclabs/uint8array-utils"
 
 describe("bnBytestrIdx UPLCProgram", () => {
 
@@ -17,9 +17,7 @@ describe("bnBytestrIdx UPLCProgram", () => {
                     new Application(
                         Builtin.indexByteString,
                         UPLCConst.byteString(
-                            new ByteString(
-                                "1a5f783625ee8c"
-                            )
+                            fromHex( "1a5f783625ee8c" )
                         )
                     ),
                     UPLCConst.int( 54321 )
@@ -51,16 +49,10 @@ describe("bnBytestrIdx UPLCProgram", () => {
         );
 
         expect(
-            plutsCompiled.toBinStr()
+            plutsCompiled
         ).toBe(
-            manuallyCompiled.toBinStr()
+            manuallyCompiled
         )
 
-        expect(
-            BitStream.eq(
-                plutsCompiled,
-                manuallyCompiled
-            )
-        ).toBe( true )
     })
 })

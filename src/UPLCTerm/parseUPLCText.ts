@@ -1,8 +1,6 @@
-import { ByteString } from "@harmoniclabs/bytestring";
 import { Application, Builtin, Case, ConstTyTag, ConstType, ConstValue, ConstValueList, Constr, Delay, ErrorUPLC, Force, Lambda, UPLCConst, UPLCVar, builtinTagFromString, constListTypeUtils, constPairTypeUtils, constT, constTypeEq, constTypeToStirng, eqConstValue, getNRequiredForces } from "../UPLCTerms";
 import { UPLCTerm } from "./UPLCTerm";
 import { Data, dataFromCbor, dataFromString, dataFromStringWithOffset } from "@harmoniclabs/plutus-data";
-import { Pair } from "@harmoniclabs/pair";
 import { bls12_381_G1_uncompress, bls12_381_G2_uncompress } from "@harmoniclabs/crypto";
 import { fromHex } from "@harmoniclabs/uint8array-utils";
 import { indexOfNextCommaOutsideParentesis } from "../utils/indexOfNextCommaOutsideParentesis";

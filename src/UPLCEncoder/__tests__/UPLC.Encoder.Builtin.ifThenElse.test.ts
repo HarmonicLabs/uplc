@@ -1,4 +1,4 @@
-import { UPLCEncoder, serializeBuiltin } from ".."
+import { UPLCEncoder } from ".."
 import { showUPLC } from "../../UPLCTerm"
 import { UPLCDecoder } from "../../UPLCDecoder"
 import { UPLCProgram } from "../../UPLCProgram"
@@ -10,26 +10,9 @@ import { Lambda } from "../../UPLCTerms/Lambda"
 import { UPLCConst } from "../../UPLCTerms/UPLCConst"
 import { BitStream } from "@harmoniclabs/bitstream"
 
-
 describe("serializeBuiltin", () => {
 
     describe("ifThenElse", () => {
-
-        test("simple ifThenElse", () => {
-
-            expect(
-                serializeBuiltin(
-                    Builtin.ifThenElse
-                )
-            ).toEqual(
-                BitStream.fromBinStr([
-                    "0101", // force
-                    "0111", // builtin
-                    "0011010" // UPLCBuiltinTag.ifThenElse.toString(2).padStart(7,'0')
-                ].join(''))
-            );
-
-        });
 
         describe("manually compiled", () => {
 
@@ -56,7 +39,7 @@ describe("serializeBuiltin", () => {
                     UPLCDecoder.parse(
                         UPLCEncoder.compile(
                             progr
-                        ).toBuffer().buffer,
+                        ),
                         "flat"
                     )
                 ).toEqual(
@@ -122,7 +105,7 @@ describe("serializeBuiltin", () => {
                 UPLCDecoder.parse(
                     UPLCEncoder.compile(
                         progr
-                    ).toBuffer().buffer,
+                    ),
                     "flat"
                 )
             ).toEqual(

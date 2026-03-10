@@ -1,5 +1,3 @@
-import { assert } from "../../utils/assert";
-
 export type UPLCBuiltinTagNumber
     = 0  | 1  | 2  | 3  | 4  | 5  | 6  | 7  | 8  | 9  
     | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 | 19 
@@ -138,8 +136,9 @@ export function isUPLCBuiltinTag( tag: UPLCBuiltinTag | UPLCBuiltinTagNumber ): 
 
 export function getNRequiredForces( tag: UPLCBuiltinTag ): ( 0 | 1 | 2 )
 {
-    assert(
-        isUPLCBuiltinTag( tag ),
+    if(!(
+        isUPLCBuiltinTag( tag )
+    )) throw new Error(
         `in getNRequiredForces; the function is specific for UPLCBuiltinTags; input was: ${tag}`
     );
 

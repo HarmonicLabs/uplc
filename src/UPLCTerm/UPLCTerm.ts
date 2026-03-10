@@ -84,9 +84,9 @@ export function isPureUPLCTerm( t: UPLCTerm ): t is PureUPLCTerm
     if( t instanceof UPLCVar )      return true;
     if( t instanceof Delay )        return isPureUPLCTerm( t.delayedTerm );
     if( t instanceof Lambda )       return isPureUPLCTerm( t.body );
-    if( t instanceof Application )  return ( isPureUPLCTerm( t.argTerm ) && isPureUPLCTerm( t.funcTerm ) );
+    if( t instanceof Application )  return ( isPureUPLCTerm( t.arg ) && isPureUPLCTerm( t.func ) );
     if( t instanceof UPLCConst )    return true;
-    if( t instanceof Force )        return isPureUPLCTerm( t.termToForce );
+    if( t instanceof Force )        return isPureUPLCTerm( t.forced );
     if( t instanceof ErrorUPLC )    return true;
     if( t instanceof Builtin )      return true;
     if( t instanceof Constr )       return t.terms.every( isPureUPLCTerm );
@@ -115,14 +115,14 @@ function _isClosedTerm( maxDeBruijn: bigint, t: UPLCTerm ): boolean
         return _isClosedTerm( maxDeBruijn + BigInt( 1 ), t.body );
 
     else if( t instanceof Application )
-        return _isClosedTerm( maxDeBruijn , t.funcTerm ) && _isClosedTerm( maxDeBruijn , t.argTerm )
+        return _isClosedTerm( maxDeBruijn , t.func ) && _isClosedTerm( maxDeBruijn , t.arg )
     
     else if( t instanceof UPLCConst )
         // `UPLCConst` has no variables in it, ence always closed
         return true;
     
     else if( t instanceof Force )
-        return _isClosedTerm( maxDeBruijn, t.termToForce );
+        return _isClosedTerm( maxDeBruijn, t.forced );
 
     else if( t instanceof ErrorUPLC )
         // `ErrorUPLC` has no variables in it, ence always closed
@@ -218,9 +218,9 @@ function _showUPLC( t: UPLCTerm, dbn: number ): string
     {
         return `(lam ${getVarNameForDbn( dbn )} ${ _showUPLC( t.body, dbn + 1 ) })`;
     }
-    if( t instanceof Application ) return `[${ _showUPLC( t.funcTerm, dbn ) } ${ _showUPLC( t.argTerm, dbn ) }]`;
+    if( t instanceof Application ) return `[${ _showUPLC( t.func, dbn ) } ${ _showUPLC( t.arg, dbn ) }]`;
     if( t instanceof UPLCConst ) return `(con ${showConstType(t.type)} ${showUPLCConstValue( t.value )})`;
-    if( t instanceof Force ) return `(force ${ _showUPLC( t.termToForce, dbn ) })`;
+    if( t instanceof Force ) return `(force ${ _showUPLC( t.forced, dbn ) })`;
     if( t instanceof ErrorUPLC ) return "(error)";
     if( t instanceof Builtin )
     {
@@ -271,9 +271,9 @@ export function prettyUPLC( term: UPLCTerm, _indent: number = 2 ): string
         {
             return `${indent}(lam ${getVarNameForDbn( dbn )} ${ _prettyUPLC( t.body, dbn + 1, depth + 1 ) }${indent})`;
         }
-        if( t instanceof Application ) return `${indent}[${ _prettyUPLC( t.funcTerm, dbn, depth + 1 ) } ${ _prettyUPLC( t.argTerm, dbn, depth + 1 ) }${indent}]`;
+        if( t instanceof Application ) return `${indent}[${ _prettyUPLC( t.func, dbn, depth + 1 ) } ${ _prettyUPLC( t.arg, dbn, depth + 1 ) }${indent}]`;
         if( t instanceof UPLCConst ) return `${indent}(con ${showConstType(t.type)} ${showUPLCConstValue( t.value )})`;
-        if( t instanceof Force ) return `${indent}(force ${ _prettyUPLC( t.termToForce, dbn, depth + 1 ) }${indent})`;
+        if( t instanceof Force ) return `${indent}(force ${ _prettyUPLC( t.forced, dbn, depth + 1 ) }${indent})`;
         if( t instanceof ErrorUPLC ) return "(error)";
         if( t instanceof Builtin )
         {
@@ -328,9 +328,9 @@ export function hasAnyRefsInTerm( varDeBruijn: number | bigint, t: UPLCTerm ): b
     if( t instanceof UPLCVar )      return t.deBruijn === dbn;
     if( t instanceof Delay )        return hasAnyRefsInTerm( dbn, t.delayedTerm );
     if( t instanceof Lambda )       return hasAnyRefsInTerm( dbn + BigInt(1), t.body );
-    if( t instanceof Application )  return hasAnyRefsInTerm( dbn, t.funcTerm ) || hasAnyRefsInTerm( dbn, t.argTerm );
+    if( t instanceof Application )  return hasAnyRefsInTerm( dbn, t.func ) || hasAnyRefsInTerm( dbn, t.arg );
     if( t instanceof UPLCConst )    return false;
-    if( t instanceof Force )        return hasAnyRefsInTerm( dbn, t.termToForce );
+    if( t instanceof Force )        return hasAnyRefsInTerm( dbn, t.forced );
     if( t instanceof ErrorUPLC )    return false;
     if( t instanceof Builtin )      return false;
     if( t instanceof Constr )       return t.terms.some( term => hasAnyRefsInTerm( dbn, term ) );
@@ -362,12 +362,12 @@ export function hasMultipleRefsInTerm( varDeBruijn: number | bigint, t: Readonly
     if( t instanceof Lambda )       return hasMultipleRefsInTerm( dbn + BigInt(1), t.body );
     if( t instanceof Application ) 
         return (
-            ( hasAnyRefsInTerm( dbn, t.funcTerm ) && hasAnyRefsInTerm( dbn, t.argTerm ) )   ||  // referenced at least once in both terms
-            hasMultipleRefsInTerm( dbn, t.funcTerm )                                        ||  // referenced multiple times in func 
-            hasMultipleRefsInTerm( dbn, t.argTerm )                                             // referenced multiple times in arg
+            ( hasAnyRefsInTerm( dbn, t.func ) && hasAnyRefsInTerm( dbn, t.arg ) )   ||  // referenced at least once in both terms
+            hasMultipleRefsInTerm( dbn, t.func )                                        ||  // referenced multiple times in func 
+            hasMultipleRefsInTerm( dbn, t.arg )                                             // referenced multiple times in arg
         );
     if( t instanceof UPLCConst )    return false;
-    if( t instanceof Force )        return hasMultipleRefsInTerm( dbn, t.termToForce )
+    if( t instanceof Force )        return hasMultipleRefsInTerm( dbn, t.forced )
     if( t instanceof ErrorUPLC )    return false;
     if( t instanceof Builtin )      return false;
 
@@ -420,9 +420,9 @@ function _getUPLCVarRefsInTerm( dbn: bigint, t: UPLCTerm, countedUntilNow: numbe
     if( t instanceof UPLCVar )      return countedUntilNow + (t.deBruijn === dbn ? 1 : 0);
     if( t instanceof Delay )        return _getUPLCVarRefsInTerm( dbn, t.delayedTerm, countedUntilNow );
     if( t instanceof Lambda )       return _getUPLCVarRefsInTerm( dbn + BigInt( 1 ) , t.body, countedUntilNow );
-    if( t instanceof Application )  return _getUPLCVarRefsInTerm( dbn , t.funcTerm, countedUntilNow ) + _getUPLCVarRefsInTerm( dbn , t.argTerm, countedUntilNow );
+    if( t instanceof Application )  return _getUPLCVarRefsInTerm( dbn , t.func, countedUntilNow ) + _getUPLCVarRefsInTerm( dbn , t.arg, countedUntilNow );
     if( t instanceof UPLCConst )    return countedUntilNow;
-    if( t instanceof Force )        return _getUPLCVarRefsInTerm( dbn, t.termToForce, countedUntilNow );
+    if( t instanceof Force )        return _getUPLCVarRefsInTerm( dbn, t.forced, countedUntilNow );
     if( t instanceof ErrorUPLC )    return countedUntilNow;
     if( t instanceof Builtin )      return countedUntilNow;
     if( t instanceof Constr )       return t.terms.reduce(( tot, term ) => _getUPLCVarRefsInTerm( dbn, term, tot ), countedUntilNow );
@@ -448,8 +448,8 @@ export function eqUPLCTerm( a: UPLCTerm, b: UPLCTerm ): boolean
     if( a instanceof Lambda && b instanceof Lambda) return eqUPLCTerm( a.body, b.body );
     if( a instanceof Application && b instanceof Application )
     return (
-        eqUPLCTerm( a.argTerm, b.argTerm ) &&
-        eqUPLCTerm( a.funcTerm, b.funcTerm )
+        eqUPLCTerm( a.arg, b.arg ) &&
+        eqUPLCTerm( a.func, b.func )
     );
     if( a instanceof UPLCConst && b instanceof UPLCConst )
     return (
@@ -466,7 +466,7 @@ export function eqUPLCTerm( a: UPLCTerm, b: UPLCTerm ): boolean
             }
         })()
     );
-    if( a instanceof Force && b instanceof Force ) return eqUPLCTerm( a.termToForce, b.termToForce );
+    if( a instanceof Force && b instanceof Force ) return eqUPLCTerm( a.forced, b.forced );
     if( a instanceof Builtin && b instanceof Builtin ) return a.builtinTag === b.builtinTag;
     
     if( a instanceof Constr && b instanceof Constr )

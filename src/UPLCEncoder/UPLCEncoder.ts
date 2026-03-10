@@ -28,6 +28,11 @@ export const encodeUPLC = compileUPLC;
 
 export class UPLCEncoder extends FlatEncoder
 {
+    static compile( program: UPLCProgram ): Uint8Array
+    {
+        return (new UPLCEncoder()).compile( program );
+    }
+
     compile( program: UPLCProgram ): Uint8Array
     {
         this.encodeVersion( program.version );
@@ -37,7 +42,9 @@ export class UPLCEncoder extends FlatEncoder
     }
 
     encodeVersion(version: UPLCVersion): void {
-        this.pushBytes(serializeVersion(version));
+        this.pushByte(version.major);
+        this.pushByte(version.minor);
+        this.pushByte(version.patch);
     }
 
     encodeTerm(term: UPLCTermObj): void {
@@ -45,7 +52,9 @@ export class UPLCEncoder extends FlatEncoder
         this.pushBits(tag, 4);
 
         switch (tag) {
-            case UPLCTermTag.Var: return this.encodeNatural(term.deBruijn);
+            // old bug, keep backwards compatiblity
+            // our UPLCVar is 0-indexed, but the encoding expects 1-indexed variables, so we add 1 here
+            case UPLCTermTag.Var: return this.encodeNatural(term.deBruijn + n1);
             case UPLCTermTag.Delay: return this.encodeTerm(term.delayedTerm);
             case UPLCTermTag.Lambda: return this.encodeTerm(term.body);
             case UPLCTermTag.Application: {
@@ -128,9 +137,9 @@ export class UPLCEncoder extends FlatEncoder
             };
             case ConstTyTag.pair: {
                 const { fst, snd } = value as Pair<unknown, unknown>;
-                const fstType = constPairTypeUtils.getFirstTypeArgument( restType );
+                const fstType = constPairTypeUtils.getFirstTypeArgument( type );
                 // const sndType = constPairTypeUtils.getSecondTypeArgument( restType );
-                const sndType = restType.slice( fstType.length ) as ConstType;
+                const sndType = restType.slice( fstType.length + 1 ) as ConstType;
                 this.encodeConstValue(fstType, fst);
                 this.encodeConstValue(sndType, snd);
                 return;

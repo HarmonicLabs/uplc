@@ -32,7 +32,7 @@ describe("Application optimization v3", () => {
                     [1,0,0],
                     app2
                 )
-            ).toBuffer().buffer;
+            );
 
             const decoded = UPLCDecoder.parse(
                 encoded
@@ -49,7 +49,7 @@ describe("Application optimization v3", () => {
                     [1,1,0],
                     app2
                 )
-            ).toBuffer().buffer;
+            );
 
             const decoded = UPLCDecoder.parse(
                 encoded
@@ -70,7 +70,7 @@ describe("Application optimization v3", () => {
                     [1,0,0],
                     app3
                 )
-            ).toBuffer().buffer;
+            );
 
             const decoded = UPLCDecoder.parse(
                 encoded
@@ -78,40 +78,6 @@ describe("Application optimization v3", () => {
 
             expect( decoded ).toEqual( app3 );
 
-        });
-
-        test("v3", () => {
-
-            const encoded = UPLCEncoder.compile(
-                new UPLCProgram(
-                    [1,1,0],
-                    app3
-                ),
-                { trivialOptimization: true }
-            ).toBuffer().buffer;
-
-            const decoded = UPLCDecoder.parse(
-                encoded
-            ).body;
-
-            expect( decoded ).not.toEqual( app3 );
-            expect( decoded ).toEqual(
-                new Case(
-                    new Constr(
-                        0,
-                        [
-                            UPLCConst.unit,
-                            UPLCConst.int( 2 ),
-                            UPLCConst.int( 1 ),
-                        ]
-                    ),
-                    [
-                        new Lambda(
-                            Builtin.addInteger
-                        )
-                    ]
-                )
-            );
         });
 
     });

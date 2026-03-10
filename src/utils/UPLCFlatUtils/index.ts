@@ -1,6 +1,5 @@
 import { BitStream } from "@harmoniclabs/bitstream";
 import BitUtils from "../BitUtils";
-import { assert } from "../assert";
 
 export type InByteOffset = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7;
 export function isInByteOffset( offset: InByteOffset ): boolean
@@ -66,15 +65,17 @@ export default class UPLCFlatUtils
      */
     static encodeBigIntAsVariableLengthBitStream( integer: Readonly<bigint> ) : BitStream
     {
-        assert(
-            typeof integer === "bigint",
+        if(!(
+            typeof integer === "bigint"
+        )) throw new Error(
             "expected a bigint as input; got instance of type: " + typeof integer
         );
 
         if( integer === BigInt( 0 ) ) return BitStream.fromBinStr( "00000000" );
 
-        assert(
-            integer > BigInt( 0 ),
+        if(!(
+            integer > BigInt( 0 )
+        )) throw new Error(
             "'UPLCFlatUtils.encodeBigIntAsVariableLengthBitStream' can only encode non-negative integers; the given input was: " + integer.toString()
         )
 
@@ -121,8 +122,9 @@ export default class UPLCFlatUtils
 
     static getPadBitStream( n: InByteOffset ): BitStream
     {
-        assert(
-            isInByteOffset( n ),
+        if(!(
+            isInByteOffset( n )
+        )) throw new Error(
             "addPadTo only works for pads from 0 inclusive to 7 inclusive"
         );
 
@@ -147,8 +149,9 @@ export default class UPLCFlatUtils
      */
     static addPadTo( toPad: BitStream, n: InByteOffset ): void
     {
-        assert(
-            BitStream.isStrictInstance( toPad ),
+        if(!(
+            BitStream.isStrictInstance( toPad )
+        )) throw new Error(
             "BitStream strict instance expected as first argument in 'UPLCFlatUtils.addPadTo'"
         );
         

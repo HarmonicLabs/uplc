@@ -15,28 +15,29 @@ describe("readVersion", () => {
                         new UPLCVersion( 1, 2, 3 ),
                         UPLCConst.int(11)
                     )
-                ).toBuffer().buffer,
+                ),
                 "flat"
             ).version
         ).toEqual( new UPLCVersion( 1, 2, 3 ) );
         
     })
 
-    test("128.2.3 (2 bytes)", () => {
+    test("127.2.3 (2 bytes)", () => {
         
+        const compiled = UPLCEncoder.compile(
+            new UPLCProgram(
+                new UPLCVersion( 127, 2, 3 ),
+                UPLCConst.int(11)
+            )
+        );
         const v = UPLCDecoder.parse(
-            UPLCEncoder.compile(
-                new UPLCProgram(
-                    new UPLCVersion( 128, 2, 3 ),
-                    UPLCConst.int(11)
-                )
-            ).toBuffer().buffer,
+            compiled,
             "flat"
         ).version;
 
         expect(
             v
-        ).toEqual( new UPLCVersion( 128, 2, 3 ) );
+        ).toEqual( new UPLCVersion( 127, 2, 3 ) );
         
     })
 

@@ -209,7 +209,7 @@ describe("parseUPLCText", () => {
 
         const uplc = parseUPLCText( source );
 
-        const serialized = compileUPLC( new UPLCProgram([1,0,0], uplc )).toBuffer().buffer;
+        const serialized = compileUPLC( new UPLCProgram([1,0,0], uplc ));
 
         const deserialized = UPLCDecoder.parse( serialized ).body;
 

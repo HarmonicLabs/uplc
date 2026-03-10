@@ -20,7 +20,7 @@ describe("readTerm( Builtin )", () => {
     
             expect(
                 UPLCDecoder.parse(
-                    UPLCEncoder.compile( ifThenElseProgr ).toBuffer().buffer,
+                    UPLCEncoder.compile( ifThenElseProgr ),
                     "flat"
                 )
             ).toEqual(
@@ -41,7 +41,7 @@ describe("readTerm( Builtin )", () => {
     
             expect(
                 UPLCDecoder.parse(
-                    UPLCEncoder.compile( ifThenElseProgr ).toBuffer().buffer,
+                    UPLCEncoder.compile( ifThenElseProgr ),
                     "flat"
                 )
             ).toEqual(
@@ -65,7 +65,7 @@ describe("readTerm( Builtin )", () => {
     
             expect(
                 UPLCDecoder.parse(
-                    UPLCEncoder.compile( ifThenElseProgr ).toBuffer().buffer,
+                    UPLCEncoder.compile( ifThenElseProgr ),
                     "flat"
                 )
             ).toEqual(
