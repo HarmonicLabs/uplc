@@ -159,8 +159,7 @@ export class UPLCEncoder extends FlatEncoder
             case ConstTyTag.pair: {
                 const { fst, snd } = value as Pair<unknown, unknown>;
                 const fstType = constPairTypeUtils.getFirstTypeArgument( type );
-                // const sndType = constPairTypeUtils.getSecondTypeArgument( restType );
-                const sndType = restType.slice( fstType.length + 1 ) as ConstType;
+                const sndType = type.slice( fstType.length + 1 ) as ConstType;
                 this.encodeConstValue(fstType, fst);
                 this.encodeConstValue(sndType, snd);
                 return;

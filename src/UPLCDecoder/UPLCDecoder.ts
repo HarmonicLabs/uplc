@@ -1,7 +1,6 @@
 import { Cbor, CborBytes, CborObj } from "@harmoniclabs/cbor";
 import { FlatDecoder } from "../_internal/flat";
 import { UPLCProgram, UPLCVersion } from "../UPLCProgram";
-import { SerializedScriptFormat } from "./_index";
 import { UPLCTerm } from "../UPLCTerm";
 import { UPLCTermTag } from "../UPLCTerm/UPLCTermTag";
 import { Application, Builtin, Case, Delay, Force, constPairTypeUtils, Constr, constT, ConstType, constTypeEq, constTypeToStirng, ConstTyTag, ErrorUPLC, Lambda, Pair, UPLCConst, UPLCVar } from "../UPLCTerms";
@@ -12,6 +11,8 @@ const n0 = BigInt(0);
 const n1 = BigInt(1);
 const n2 = BigInt(2);
 const n7 = BigInt(7);
+
+export type SerializedScriptFormat = "cbor" | "flat";
 
 /**
  * Converts a flat list of raw 4-bit type tags from the wire format
