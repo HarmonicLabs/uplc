@@ -13,7 +13,7 @@ describe("decode program", () => {
             "cbor"
         ).body;
 
-        console.log( prettyUPLC( uplc ) );
+        // console.log( prettyUPLC( uplc ) );
         
     });
 

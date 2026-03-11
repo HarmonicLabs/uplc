@@ -1,8 +1,7 @@
-import { ByteString } from "@harmoniclabs/bytestring";
+import { fromAscii } from "@harmoniclabs/uint8array-utils";
 import { UPLCTerm, getOffsetToNextClosingBracket, parseConstType, parseUPLCText, prettyUPLC, showConstType, showUPLC } from "..";
 import { Application, Builtin, ConstType, ConstValueList, Delay, ErrorUPLC, Force, Lambda, UPLCConst, UPLCVar, constT } from "../../UPLCTerms";
 import { DataB, DataConstr, DataI, dataFromCbor } from "@harmoniclabs/plutus-data";
-import { Pair } from "@harmoniclabs/pair";
 import { compileUPLC } from "../../UPLCEncoder";
 import { UPLCProgram } from "../../UPLCProgram";
 import { UPLCDecoder } from "../../UPLCDecoder";
@@ -87,16 +86,16 @@ describe("parseUPLCText", () => {
         tst( UPLCConst.int( 42 ) );
         tst( UPLCConst.int( -42 ) );
         tst( UPLCConst.str( "hello" ) );
-        tst( UPLCConst.byteString( ByteString.fromAscii("hello") ) );
+        tst( UPLCConst.byteString( fromAscii("hello") ) );
         tst( UPLCConst.data( dBs ) );
         tst( UPLCConst.data( dConstr ) );
         tst( UPLCConst.listOf( constT.data )([ dBs, dConstr ]) );
         tst( conPairDI );
         tst(
             UPLCConst.listOf( constT.pairOf( constT.data, constT.data ) )([
-                new Pair( dConstr, dBs ),
-                new Pair( dBs, dBs ),
-                new Pair( dConstr, dConstr ),
+                { fst: dConstr, snd: dBs },
+                { fst: dBs, snd: dBs },
+                { fst: dConstr, snd: dConstr },
             ] as ConstValueList)
         )
     })

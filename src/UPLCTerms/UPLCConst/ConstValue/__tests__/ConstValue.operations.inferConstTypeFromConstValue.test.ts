@@ -1,4 +1,4 @@
-import { ByteString } from "@harmoniclabs/bytestring";
+import { fromHex } from "@harmoniclabs/uint8array-utils";
 import { inferConstTypeFromConstValue } from ".."
 import { constT } from "../../ConstType"
 
@@ -20,7 +20,7 @@ describe("ConstValue :: inferConstTypeFromConstValue", () => {
         );
 
         expect(
-            inferConstTypeFromConstValue( new ByteString( "abcd" ) )
+            inferConstTypeFromConstValue( fromHex( "abcd" ) )
         ).toEqual(
             constT.byteStr
         );

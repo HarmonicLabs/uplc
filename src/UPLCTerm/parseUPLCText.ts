@@ -7,7 +7,6 @@ import { indexOfNextCommaOutsideParentesis } from "../utils/indexOfNextCommaOuts
 import { indexOfNextUnmatchedParentesis } from "../utils/indexOfNextUnmatchedParentesis";
 import { getTextBetweenMatchingQuotes } from "../utils/getTextBetweenMatchingQuotes";
 import { indexOfMany } from "../utils/indexOfMany";
-import { off } from "process";
 import { UPLCVersion, defaultUplcVersion } from "../UPLCProgram";
 
 
@@ -140,10 +139,10 @@ export function _parseUPLCText(
 
             if(
                 directChild instanceof Force &&
-                directChild.termToForce instanceof Builtin &&
-                getNRequiredForces( directChild.termToForce.builtinTag ) === 2
+                directChild.forced instanceof Builtin &&
+                getNRequiredForces( directChild.forced.builtinTag ) === 2
             ) return {
-                term: directChild.termToForce,
+                term: directChild.forced,
                 offset
             };
 
@@ -404,7 +403,7 @@ export function parseConstValueOfType(
 
         sliceTrimIncr( i );
         return {
-            value: new ByteString( hex ),
+            value: fromHex( hex ),
             offset
         };
     }
@@ -469,7 +468,7 @@ export function parseConstValueOfType(
         sliceTrimIncr( closeIdx + 1 );
 
         return {
-            value: new Pair( fst.value, snd.value ),
+            value: { fst: fst.value, snd: snd.value },
             offset
         };
     }

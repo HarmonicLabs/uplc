@@ -278,8 +278,13 @@ export function prettyUPLC( term: UPLCTerm, _indent: number = 2 ): string
         if( t instanceof Builtin )
         {
             const nForces = getNRequiredForces( t.builtinTag );
-    
-            return indent + "(force ".repeat( nForces ) +`(builtin ${builtinTagToString( t.builtinTag )})` + ')'.repeat( nForces )
+            let inner = `\n${indentStr.repeat( depth + nForces )}(builtin ${builtinTagToString( t.builtinTag )})`;
+            for( let i = nForces - 1; i >= 0; i-- )
+            {
+                const forceIndent = `\n${indentStr.repeat( depth + i )}`;
+                inner = `${forceIndent}(force ${inner}${forceIndent})`;
+            }
+            return inner;
         }
         if( t instanceof Constr )
         {

@@ -13,6 +13,27 @@ const n2 = BigInt(2);
 const n7 = BigInt(7);
 const n127 = BigInt(127);
 
+/**
+ * Converts the internal ConstType (flat array without tyApp tags) to
+ * the wire format (which uses 7 = tyApp as a prefix for compound types).
+ *
+ * Internal examples:
+ *   [ConstTyTag.int]                              → [2]
+ *   [ConstTyTag.list, ConstTyTag.int]             → [7, 5, 2]
+ *   [ConstTyTag.pair, ConstTyTag.int, ConstTyTag.byteStr] → [7, 7, 6, 2, 1]
+ */
+function constTypeToWire(type: ConstType): number[] {
+    if (type[0] === ConstTyTag.list) {
+        return [7, 5, ...constTypeToWire(type.slice(1) as ConstType)];
+    }
+    if (type[0] === ConstTyTag.pair) {
+        const fstType = constPairTypeUtils.getFirstTypeArgument(type);
+        const sndType = constPairTypeUtils.getSecondTypeArgument(type);
+        return [7, 7, 6, ...constTypeToWire(fstType), ...constTypeToWire(sndType)];
+    }
+    return [type[0] as number];
+}
+
 
 export function compileUPLC(
     program: UPLCProgram
@@ -119,7 +140,7 @@ export class UPLCEncoder extends FlatEncoder
     }
 
     encodeConst(con: IUPLCConst): void {
-        this.encodeList(con.type, n => this.pushBits(n, 4));
+        this.encodeList(constTypeToWire(con.type), n => this.pushBits(n, 4));
         this.encodeConstValue(con.type, con.value);
     }
     encodeConstValue(type: ConstType, value: unknown): void {

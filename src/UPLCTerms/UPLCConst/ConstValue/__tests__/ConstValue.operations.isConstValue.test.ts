@@ -1,7 +1,5 @@
-import { ByteString } from "@harmoniclabs/bytestring";
 import { ConstValue, isConstValue, isConstValueList } from ".."
 import { fromHex } from "@harmoniclabs/uint8array-utils";
-import { Pair } from "@harmoniclabs/pair";
 
 describe("ConstValue :: isConstValue, simple values", () => {
 
@@ -21,15 +19,10 @@ describe("ConstValue :: isConstValue, simple values", () => {
 
     })
 
-    it("is true for strict ByteString instances", () => {
+    it("is true for Uint8Array instances", () => {
 
-        expect( isConstValue( new ByteString( "abcd" ) ) ).toBe( true );
-        expect( isConstValue( new ByteString( fromHex( "abcd" ) ) ) ).toBe( true );
-
-        class SomeExtendedBS extends ByteString {};
-
-        expect( isConstValue( new SomeExtendedBS( "abcd" ) ) ).toBe( false );
-        expect( isConstValue( new SomeExtendedBS( fromHex( "abcd" ) ) ) ).toBe( false );
+        expect( isConstValue( fromHex( "abcd" ) ) ).toBe( true );
+        expect( isConstValue( new Uint8Array(0) ) ).toBe( true );
 
     })
 
@@ -79,28 +72,28 @@ describe("ConstValue :: isConstValue, simple values", () => {
 
     it("is true for Pairs of ConstValues", () => {
 
-        expect( 
-            isConstValue( new Pair( undefined , undefined ) )
+        expect(
+            isConstValue( { fst: undefined, snd: undefined } )
         ).toBe( true );
 
-        expect( 
-            isConstValue( new Pair( 2 , undefined ) )
+        expect(
+            isConstValue( { fst: 2, snd: undefined } )
         ).toBe( true );
 
-        expect( 
-            isConstValue( new Pair( 2 , 42 ) )
+        expect(
+            isConstValue( { fst: 2, snd: 42 } )
         ).toBe( true );
 
-        expect( 
-            isConstValue( new Pair( "str" , new ByteString( "abcd" ) ) )
+        expect(
+            isConstValue( { fst: "str", snd: fromHex( "abcd" ) } )
         ).toBe( true );
 
     })
 
     it("is false for Pairs that do contain non ConstValue values", () => {
 
-        expect( 
-            isConstValue( new Pair( 2 , {} ) )
+        expect(
+            isConstValue( { fst: 2, snd: {} } )
         ).toBe( false );
 
     })
@@ -130,7 +123,7 @@ describe("ConstValue :: isConstValueList", () => {
         ).toBe(true);
         
         expect(
-            isConstValueList([ new ByteString( "abcd" ) ])
+            isConstValueList([ fromHex( "abcd" ) ])
         ).toBe(true);
 
     })
@@ -146,7 +139,7 @@ describe("ConstValue :: isConstValueList", () => {
         ).toBe(false);
         
         expect(
-            isConstValueList( new ByteString( "abcd" ) )
+            isConstValueList( fromHex( "abcd" ) )
         ).toBe(false);
 
     });
@@ -162,7 +155,7 @@ describe("ConstValue :: isConstValueList", () => {
         ).toBe(false);
         
         expect(
-            isConstValueList([ new ByteString( "abcd" ), "abcd" ])
+            isConstValueList([ fromHex( "abcd" ), "abcd" ])
         ).toBe(false);
 
     });

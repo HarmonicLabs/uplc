@@ -4,7 +4,7 @@ import { UPLCProgram, UPLCVersion } from "../UPLCProgram";
 import { SerializedScriptFormat } from "./_index";
 import { UPLCTerm } from "../UPLCTerm";
 import { UPLCTermTag } from "../UPLCTerm/UPLCTermTag";
-import { Application, Builtin, Case, constPairTypeUtils, Constr, constT, ConstType, constTypeEq, constTypeToStirng, ConstTyTag, ErrorUPLC, Lambda, Pair, UPLCConst, UPLCVar } from "../UPLCTerms";
+import { Application, Builtin, Case, Delay, Force, constPairTypeUtils, Constr, constT, ConstType, constTypeEq, constTypeToStirng, ConstTyTag, ErrorUPLC, Lambda, Pair, UPLCConst, UPLCVar } from "../UPLCTerms";
 import { Data, dataFromCbor } from "@harmoniclabs/plutus-data";
 import { toUtf8 } from "@harmoniclabs/uint8array-utils";
 
@@ -12,13 +12,46 @@ const n0 = BigInt(0);
 const n1 = BigInt(1);
 const n2 = BigInt(2);
 const n7 = BigInt(7);
-const n127 = BigInt(127);
+
+/**
+ * Converts a flat list of raw 4-bit type tags from the wire format
+ * (which uses 7 = tyApp as a prefix for compound types) to the internal
+ * ConstType representation (a flat array of ConstTyTag without tyApp tags).
+ *
+ * Wire examples:
+ *   [2]           → [ConstTyTag.int]
+ *   [7, 5, 2]     → [ConstTyTag.list, ConstTyTag.int]
+ *   [7, 7, 6, 2, 1] → [ConstTyTag.pair, ConstTyTag.int, ConstTyTag.byteStr]
+ */
+function wireToConstType(rawTags: number[]): ConstType {
+    // Returns [parsed ConstType tags, next index to continue from]
+    function parse(idx: number): [ConstType, number] {
+        if (idx >= rawTags.length) throw new Error("UPLCDecoder: empty const type");
+        const tag = rawTags[idx]!;
+        if (tag === 7) {
+            const next = rawTags[idx + 1];
+            if (next === 5) {
+                // list <innerType>
+                const [innerType, nextIdx] = parse(idx + 2);
+                return [[ConstTyTag.list, ...innerType], nextIdx];
+            } else if (next === 7 && rawTags[idx + 2] === 6) {
+                // pair <firstType> <secondType>
+                const [firstType, afterFirst] = parse(idx + 3);
+                const [secondType, afterSecond] = parse(afterFirst);
+                return [[ConstTyTag.pair, ...firstType, ...secondType], afterSecond];
+            }
+            throw new Error("UPLCDecoder: unknown type application at index " + (idx + 1));
+        }
+        return [[tag as ConstTyTag], idx + 1];
+    }
+    return parse(0)[0];
+}
 
 export class UPLCDecoder extends FlatDecoder {
     constructor(bytes: Uint8Array) { super(bytes); }
     static parse(
         serializedScript: Uint8Array,
-        format: SerializedScriptFormat = "flat"
+        format: SerializedScriptFormat = "cbor"
     ): UPLCProgram {
         if (format === "cbor") {
             let shouldTryParseCbor = true;
@@ -65,7 +98,7 @@ export class UPLCDecoder extends FlatDecoder {
         switch (tag) {
             case UPLCTermTag.Var: {
                 const deBruijn = this.decodeNatural();
-                return new UPLCVar(deBruijn);
+                return new UPLCVar(deBruijn - n1);
             }
             case UPLCTermTag.Lambda: return new Lambda(this.decodeTerm(lamDepth + n1));
             case UPLCTermTag.Application: {
@@ -74,8 +107,8 @@ export class UPLCDecoder extends FlatDecoder {
                 return new Application(func, arg);
             }
             case UPLCTermTag.Builtin: return new Builtin(this.popBits(7));
-            case UPLCTermTag.Delay: return this.decodeTerm(lamDepth);
-            case UPLCTermTag.Force: return this.decodeTerm(lamDepth);
+            case UPLCTermTag.Delay: return new Delay(this.decodeTerm(lamDepth));
+            case UPLCTermTag.Force: return new Force(this.decodeTerm(lamDepth));
             case UPLCTermTag.Constr: return new Constr(
                 this.decodeNatural(),
                 this.decodeList(() => this.decodeTerm(lamDepth))
@@ -86,10 +119,11 @@ export class UPLCDecoder extends FlatDecoder {
             );
             case UPLCTermTag.Error: return new ErrorUPLC();
             case UPLCTermTag.Const: {
-                const type = this.decodeList(() => this.popBits(4) as ConstTyTag) as ConstType;
-                if (type.length < 1) throw new Error(
+                const rawTags = this.decodeList(() => this.popBits(4) as number);
+                if (rawTags.length < 1) throw new Error(
                     "UPLCDecoder.decodeTerm: expected at least one tag for the Const type; got an empty list"
                 );
+                const type = wireToConstType(rawTags);
                 return new UPLCConst(
                     type,
                     this.decodeConstValue(type)
@@ -100,7 +134,6 @@ export class UPLCDecoder extends FlatDecoder {
     }
 
     decodeConstValue(type: ConstType): any {
-        console.log( type );
         if (constTypeEq(type, constT.int)) return this.decodeInteger();
         else if (constTypeEq(type, constT.byteStr)) return this.decodeByteString();
         else if (constTypeEq(type, constT.str)) return toUtf8(this.decodeByteString());

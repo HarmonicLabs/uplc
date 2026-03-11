@@ -9,11 +9,17 @@ cabal run uplc -- example -s true
 (program 1.0.0 (con bool True))
 */
 
-import { BitStream } from "@harmoniclabs/bitstream";
 import { UPLCProgram } from "..";
 import { UPLCEncoder } from "../../UPLCEncoder";
 import { UPLCConst } from "../../UPLCTerms/UPLCConst";
 
+function fromBinStr( binStr: string ): Uint8Array
+{
+    const bytes = new Uint8Array( binStr.length / 8 );
+    for( let i = 0; i < bytes.length; i++ )
+        bytes[i] = parseInt( binStr.slice( i * 8, i * 8 + 8 ), 2 );
+    return bytes;
+}
 
 describe("true", () => {
 
@@ -26,7 +32,7 @@ describe("true", () => {
             )
         );
 
-        const manuallyCompiled = BitStream.fromBinStr(
+        const manuallyCompiled = fromBinStr(
             [
                 "00000001" + "00000000" + "00000000", // version 1.0.0
                 "0100", // const tag
@@ -36,18 +42,7 @@ describe("true", () => {
             ].join('')
         );
 
-        expect(
-            plutsCompiled.toBinStr()
-        ).toBe(
-            manuallyCompiled.toBinStr()
-        )
-
-        expect(
-            BitStream.eq(
-                plutsCompiled,
-                manuallyCompiled
-            )
-        ).toBe( true )
+        expect( plutsCompiled ).toEqual( manuallyCompiled )
 
     });
 
