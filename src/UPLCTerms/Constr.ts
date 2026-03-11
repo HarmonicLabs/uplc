@@ -1,10 +1,9 @@
-import { BitStream } from "@harmoniclabs/bitstream";
 import { IUPLCTerm, UPLCTerm, UPLCTermObj } from "../UPLCTerm/UPLCTerm";
 import { UPLCTermTag } from "../UPLCTerm/UPLCTermTag";
 
 export interface IConstr {
     tag: UPLCTermTag.Constr;
-    index: bigint;
+    index: number; // should be enough for any reasonable program
     terms: UPLCTermObj[];
 }
 export class Constr
@@ -14,13 +13,20 @@ export class Constr
     static UPLCTag: UPLCTermTag.Constr = UPLCTermTag.Constr;
     readonly tag: UPLCTermTag.Constr = UPLCTermTag.Constr;
     
-    public index: bigint;
+    public index: number;
     public terms: UPLCTerm[];
 
     constructor( index: bigint | number, terms: UPLCTerm[] )
     {
-        this.index = BigInt( index );
+        this.index = Number( index );
         this.terms = terms;
+        if(!(
+            Number.isSafeInteger( this.index )
+            && this.index >= 0
+        )) throw new Error(
+            "invalid index; while creating 'Constr' instance, index was: "
+            + index
+        );
     }
 
     clone(): Constr

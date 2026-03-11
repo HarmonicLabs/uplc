@@ -1,11 +1,11 @@
-import { IUPLCTerm } from "../../UPLCTerm/UPLCTerm";
+import type { IUPLCTerm } from "../../UPLCTerm/UPLCTerm";
+import type { CanBeUInteger } from "../../utils/ints";
 import { UPLCTermTag } from "../../UPLCTerm/UPLCTermTag";
-import { CanBeUInteger, forceBigUInt } from "../../utils/ints";
 
 export interface IUPLCVar
 {
     readonly tag: UPLCTermTag.Var;
-    readonly deBruijn: bigint;
+    readonly deBruijn: number; // should be enough for any reasonable program
 }
 
 export class UPLCVar
@@ -15,14 +15,15 @@ export class UPLCVar
     static readonly UPLCTag: UPLCTermTag.Var = UPLCTermTag.Var;
     readonly tag: UPLCTermTag.Var = UPLCTermTag.Var;
 
-    readonly deBruijn: bigint;
+    readonly deBruijn: number;
 
     constructor( deBruijn: CanBeUInteger )
     {
-        this.deBruijn = BigInt( deBruijn );
+        this.deBruijn = Number( deBruijn );
 
         if(!(
-            this.deBruijn >= BigInt( 0 )
+            Number.isSafeInteger( this.deBruijn )
+            && this.deBruijn >= 0
         )) throw new Error(
             "invalid deBruijn index; while creating 'UPLCVar' instance, deBruijn index was: "
             + this.deBruijn

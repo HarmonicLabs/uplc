@@ -330,7 +330,7 @@ export function hasAnyRefsInTerm( varDeBruijn: number | bigint, t: UPLCTerm ): b
 
     const dbn = BigInt( varDeBruijn );
 
-    if( t instanceof UPLCVar )      return t.deBruijn === dbn;
+    if( t instanceof UPLCVar )      return BigInt( t.deBruijn ) === dbn;
     if( t instanceof Delay )        return hasAnyRefsInTerm( dbn, t.delayedTerm );
     if( t instanceof Lambda )       return hasAnyRefsInTerm( dbn + BigInt(1), t.body );
     if( t instanceof Application )  return hasAnyRefsInTerm( dbn, t.func ) || hasAnyRefsInTerm( dbn, t.arg );
@@ -422,7 +422,7 @@ function _getUPLCVarRefsInTerm( dbn: bigint, t: UPLCTerm, countedUntilNow: numbe
         "'getUPLCVarRefsInTerm' expects an UPLCTerms"
     );
 
-    if( t instanceof UPLCVar )      return countedUntilNow + (t.deBruijn === dbn ? 1 : 0);
+    if( t instanceof UPLCVar )      return countedUntilNow + (BigInt(t.deBruijn) === dbn ? 1 : 0);
     if( t instanceof Delay )        return _getUPLCVarRefsInTerm( dbn, t.delayedTerm, countedUntilNow );
     if( t instanceof Lambda )       return _getUPLCVarRefsInTerm( dbn + BigInt( 1 ) , t.body, countedUntilNow );
     if( t instanceof Application )  return _getUPLCVarRefsInTerm( dbn , t.func, countedUntilNow ) + _getUPLCVarRefsInTerm( dbn , t.arg, countedUntilNow );

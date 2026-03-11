@@ -21,6 +21,10 @@ export interface BitStreamPadToByteOptions {
     withOneAsEndPadding: boolean
 }
 
+const n0 = BigInt(0);
+const n1 = BigInt(1);
+const n2 = BigInt(2);
+
 /**
  * @static
  */
@@ -33,25 +37,27 @@ export default class UPLCFlatUtils
 
     static zigzagBigint( bigint: bigint ): bigint
     {
-        return (
-            bigint >> 
-                (
-                    BigInt( 
-                        BitUtils.getNOfUsedBits( bigint ) 
-                    )
-                )
-        ) ^ // XOR
-        ( bigint << BigInt( 1 ) );
+        // return (
+        //     bigint >> 
+        //         (
+        //             BigInt( 
+        //                 BitUtils.getNOfUsedBits( bigint ) 
+        //             )
+        //         )
+        // ) ^ // XOR
+        // ( bigint << BigInt( 1 ) );
+        return bigint >= n0 ? bigint * n2 : -bigint * n2 - n1;
     }
 
     static unzigzagBigint( bigint: bigint ): bigint
     {
-        return (
-            (
-                (bigint >> BigInt(1))
-            ) ^ // XOR
-            -( bigint & BigInt(1) )
-        );
+        // return (
+        //     (
+        //         (bigint >> BigInt(1))
+        //     ) ^ // XOR
+        //     -( bigint & BigInt(1) )
+        // );
+        return (bigint & n1) === n0 ? bigint / n2 : -( (bigint + n1) / n2 );
     }
 
     /**

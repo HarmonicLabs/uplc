@@ -12,6 +12,8 @@ const n1 = BigInt(1);
 const n2 = BigInt(2);
 const n7 = BigInt(7);
 const n127 = BigInt(127);
+const n0x7f = BigInt(0x7f);
+const nMaxSafeInteger = BigInt(Number.MAX_SAFE_INTEGER ?? 0xff_ff_ff_ff);
 
 /**
  * Converts the internal ConstType (flat array without tyApp tags) to
@@ -75,7 +77,7 @@ export class UPLCEncoder extends FlatEncoder
         switch (tag) {
             // old bug, keep backwards compatiblity
             // our UPLCVar is 0-indexed, but the encoding expects 1-indexed variables, so we add 1 here
-            case UPLCTermTag.Var: return this.encodeNatural(term.deBruijn + n1);
+            case UPLCTermTag.Var: return this.encodeNatural(term.deBruijn + 1);
             case UPLCTermTag.Delay: return this.encodeTerm(term.delayedTerm);
             case UPLCTermTag.Lambda: return this.encodeTerm(term.body);
             case UPLCTermTag.Application: {
@@ -109,18 +111,37 @@ export class UPLCEncoder extends FlatEncoder
         this.pushBit(0);
     }
 
-    /**
-     * Encodes a natural number (non-negative integer).
-     * @param n - The natural number to encode.
-     */
-    encodeNatural(n: bigint): void {
-        if (n <= n127) {
-            this.pushBits(Number(n), 8);
+    encodeNatural(n: number): void {
+        if (n <= 127) {
+            this.pushBits( n, 8 );
             return;
         }
         const bits: number[] = [];
         while (n > 0) {
-            bits.push(Number(n) & 0x7f);
+            bits.push(n & 0x7f);
+            n >>= 7;
+        }
+        for (let i = 0; i < bits.length; i++) {
+            this.pushBit(i !== bits.length - 1 ? 1 : 0);
+            this.pushBits(bits[i]!, 7);
+        }
+    }
+    /**
+     * Encodes a natural number (non-negative integer).
+     * @param n - The natural number to encode.
+     */
+    encodeNaturalBig(n: bigint): void {
+        if (n <= n127) {
+            this.pushBits(Number(n), 8);
+            return;
+        }
+        if( n <= nMaxSafeInteger ) {
+            this.encodeNatural( Number(n) );
+            return;
+        }
+        const bits: number[] = [];
+        while (n > 0) {
+            bits.push(Number(n & n0x7f));
             n >>= n7;
         }
         for (let i = 0; i < bits.length; i++) {
@@ -180,7 +201,7 @@ export class UPLCEncoder extends FlatEncoder
      */
     encodeInteger(i: bigint): void {
         const n = i >= 0 ? i * n2 : -i * n2 - n1;
-        this.encodeNatural(n);
+        this.encodeNaturalBig(n);
     }
 
     /**
