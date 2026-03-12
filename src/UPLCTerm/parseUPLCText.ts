@@ -129,23 +129,6 @@ export function _parseUPLCText(
             offset += getOffsetToNextClosingBracket( str, "(", ")" );
             const directChild = _parseUPLCText( str.slice( 5 ), env, dbn, version ).term;
 
-            if(
-                directChild instanceof Builtin &&
-                getNRequiredForces( directChild.builtinTag ) === 1
-            ) return {
-                term: directChild,
-                offset
-            }
-
-            if(
-                directChild instanceof Force &&
-                directChild.forced instanceof Builtin &&
-                getNRequiredForces( directChild.forced.builtinTag ) === 2
-            ) return {
-                term: directChild.forced,
-                offset
-            };
-
             return {
                 term: new Force( directChild ),
                 offset

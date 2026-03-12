@@ -224,9 +224,7 @@ function _showUPLC( t: UPLCTerm, dbn: number ): string
     if( t instanceof ErrorUPLC ) return "(error)";
     if( t instanceof Builtin )
     {
-        const nForces = getNRequiredForces( t.builtinTag );
-
-        return "(force ".repeat( nForces ) +`(builtin ${builtinTagToString( t.builtinTag )})` + ')'.repeat( nForces )
+        return `(builtin ${builtinTagToString( t.builtinTag )})`
     }
     if( t instanceof Constr )
     {
@@ -277,14 +275,7 @@ export function prettyUPLC( term: UPLCTerm, _indent: number = 2 ): string
         if( t instanceof ErrorUPLC ) return "(error)";
         if( t instanceof Builtin )
         {
-            const nForces = getNRequiredForces( t.builtinTag );
-            let inner = `\n${indentStr.repeat( depth + nForces )}(builtin ${builtinTagToString( t.builtinTag )})`;
-            for( let i = nForces - 1; i >= 0; i-- )
-            {
-                const forceIndent = `\n${indentStr.repeat( depth + i )}`;
-                inner = `${forceIndent}(force ${inner}${forceIndent})`;
-            }
-            return inner;
+            return `${indent}(builtin ${builtinTagToString( t.builtinTag )})`;
         }
         if( t instanceof Constr )
         {
