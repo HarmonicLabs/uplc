@@ -1,7 +1,7 @@
 import { fromAscii } from "@harmoniclabs/uint8array-utils";
 import { UPLCTerm, getOffsetToNextClosingBracket, parseConstType, parseUPLCText, prettyUPLC, showConstType, showUPLC } from "..";
 import { Application, Builtin, ConstType, ConstValueList, Delay, ErrorUPLC, Force, Lambda, UPLCConst, UPLCVar, constT } from "../../UPLCTerms";
-import { DataB, DataConstr, DataI, dataFromCbor } from "@harmoniclabs/plutus-data";
+import { DataB, DataConstr, DataI, DataList, DataMap, DataPair, Data, dataFromCbor } from "@harmoniclabs/plutus-data";
 import { compileUPLC } from "../../UPLCEncoder";
 import { UPLCProgram } from "../../UPLCProgram";
 import { UPLCDecoder } from "../../UPLCDecoder";
@@ -199,6 +199,71 @@ describe("parseUPLCText", () => {
         testClone( addInt );
         testClone( implicitForce );
         testClone( implicitForce2 );
+
+    });
+
+    describe("multi-argument application", () => {
+
+        test("[f a b] desugars to [[f a] b]", () => {
+            const result = parseUPLCText("[(lam x (lam y x)) (con integer 42) (con bool False)]");
+            expect( result ).toEqual(
+                new Application(
+                    new Application(
+                        new Lambda( new Lambda( new UPLCVar(1) ) ),
+                        UPLCConst.int( 42 )
+                    ),
+                    UPLCConst.bool( false )
+                )
+            );
+        });
+
+        test("[f a b c] desugars to [[[f a] b] c]", () => {
+            const result = parseUPLCText(
+                "[(lam f (lam x (lam y [f x y]))) (lam a (lam b a)) (con bool False) (con bool True)]"
+            );
+            // outermost should be Application( Application( Application( f, a ), b ), c )
+            expect( result.tag ).toBe( 3 ); // Application
+            expect( (result as Application).func.tag ).toBe( 3 ); // Application
+            expect( ((result as Application).func as Application).func.tag ).toBe( 3 ); // Application
+        });
+
+    });
+
+    describe("string escape sequences", () => {
+
+        test("decimal, hex, octal escapes", () => {
+            const result = parseUPLCText(
+                String.raw`(con string "\t\"\83\x75\x63\o143e\x73s\o041\o042\n")`
+            );
+            expect( (result as UPLCConst).value ).toBe( '\t"Success!"\n' );
+        });
+
+        test("unicode decimal escapes", () => {
+            const result = parseUPLCText(
+                String.raw`(con string "x \8712 \8477")`
+            );
+            // \8712 = ∈, \8477 = ℝ
+            expect( (result as UPLCConst).value ).toBe( "x \u2208 \u211D" );
+        });
+
+    });
+
+    describe("con data with comma-first formatting", () => {
+
+        test("Map with comma-first style parses correctly", () => {
+            const result = parseUPLCText(`(con data (Map
+       [ (B #0123, I 12345)
+       , (I 789453, B #456789)
+       , (List [I -12364689486], Constr 7 []) ]))`);
+
+            expect( (result as UPLCConst).value ).toEqual(
+                new DataMap([
+                    new DataPair( new DataB("0123"), new DataI(12345) ),
+                    new DataPair( new DataI(789453), new DataB("456789") ),
+                    new DataPair( new DataList([ new DataI(-12364689486) ]), new DataConstr(7n,[]) )
+                ] as DataPair<Data,Data>[])
+            );
+        });
 
     });
 

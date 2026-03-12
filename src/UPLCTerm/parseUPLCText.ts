@@ -91,13 +91,22 @@ export function _parseUPLCText(
         offset += getOffsetToNextClosingBracket( str, "[", "]" );
 
         const fn = _parseUPLCText( str, env, dbn, version );
-        
-        str = str.slice( fn.offset + 1 );
+        str = str.slice( fn.offset ).trimStart();
 
-        const arg = _parseUPLCText( str, env, dbn, version );
+        const firstArg = _parseUPLCText( str, env, dbn, version );
+        let term: UPLCTerm = new Application( fn.term, firstArg.term );
+        str = str.slice( firstArg.offset ).trimStart();
+
+        // multi-argument application: [f a b c] desugars to [[[f a] b] c]
+        while( str.length > 0 && str[0] !== "]" )
+        {
+            const nextArg = _parseUPLCText( str, env, dbn, version );
+            term = new Application( term, nextArg.term );
+            str = str.slice( nextArg.offset ).trimStart();
+        }
 
         return {
-            term: new Application( fn.term, arg.term ),
+            term,
             offset
         }
     }
@@ -333,12 +342,13 @@ export function parseConstValueOfType(
         if( !/^\s*$/.test( str.slice( 0, quoteIdx ) ) ) throw new Error("ill formed uplc");
 
         sliceTrimIncr( quoteIdx );
-        const value = getTextBetweenMatchingQuotes( str );
+        const rawValue = getTextBetweenMatchingQuotes( str );
 
-        if( typeof value !== "string" )
+        if( typeof rawValue !== "string" )
         throw new Error("missing constant string value");
-        
-        sliceTrimIncr( value.length + 2 );
+
+        sliceTrimIncr( rawValue.length + 2 );
+        const value = interpretUPLCStringEscapes( rawValue );
         return {
             value,
             offset
@@ -703,13 +713,71 @@ export function parseUPLCText( str: string, version: UPLCVersion = defaultUplcVe
     return _parseUPLCText( str, {}, 0, version ).term;
 }
 
+function interpretUPLCStringEscapes( raw: string ): string
+{
+    let result = "";
+    for( let i = 0; i < raw.length; i++ )
+    {
+        if( raw[i] !== "\\" )
+        {
+            result += raw[i];
+            continue;
+        }
+        i++;
+        if( i >= raw.length ) break;
+        const c = raw[i];
+        switch( c )
+        {
+            case "\\": result += "\\"; break;
+            case "\"": result += "\""; break;
+            case "n":  result += "\n"; break;
+            case "t":  result += "\t"; break;
+            case "r":  result += "\r"; break;
+            case "a":  result += "\x07"; break;
+            case "b":  result += "\b"; break;
+            case "f":  result += "\f"; break;
+            case "v":  result += "\v"; break;
+            case "x": case "X": {
+                // hex escape: \xNN...
+                let hex = "";
+                while( i + 1 < raw.length && /[0-9a-fA-F]/.test( raw[i + 1] ) ) hex += raw[++i];
+                result += String.fromCodePoint( parseInt( hex, 16 ) );
+                break;
+            }
+            case "o": case "O": {
+                // octal escape: \oNNN...
+                let oct = "";
+                while( i + 1 < raw.length && /[0-7]/.test( raw[i + 1] ) ) oct += raw[++i];
+                result += String.fromCodePoint( parseInt( oct, 8 ) );
+                break;
+            }
+            default: {
+                // decimal escape: \NNN...
+                if( /[0-9]/.test( c ) )
+                {
+                    let dec = c;
+                    while( i + 1 < raw.length && /[0-9]/.test( raw[i + 1] ) ) dec += raw[++i];
+                    result += String.fromCodePoint( parseInt( dec, 10 ) );
+                }
+                else
+                {
+                    // unknown escape, preserve as-is
+                    result += "\\" + c;
+                }
+                break;
+            }
+        }
+    }
+    return result;
+}
+
 /**
- * 
+ *
  * @param {string} str string removed of the first opening bracket
  * @example
  * ```ts
  * const str = "( hello )";
- * const expectedInput = str.slice(1); // " hello )"; 
+ * const expectedInput = str.slice(1); // " hello )";
  * const offset = getOffsetToNextClosingBracket( expectedInput ); // 8
  * ```
  * @returns 

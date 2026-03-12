@@ -1,6 +1,6 @@
 {
   "name": "@harmoniclabs/uplc",
-  "version": "2.0.4",
+  "version": "2.0.5",
   "description": "",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -39,7 +39,7 @@
   "peerDependencies": {
     "@harmoniclabs/cbor": "^2.0.1",
     "@harmoniclabs/crypto": "^0.3.0",
-    "@harmoniclabs/plutus-data": "^2.0.0"
+    "@harmoniclabs/plutus-data": "^2.0.1"
   },
   "devDependencies": {
     "@babel/preset-env": "^7.18.6",
