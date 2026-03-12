@@ -90,7 +90,7 @@ export class UPLCEncoder extends FlatEncoder
             case UPLCTermTag.Error: return; // No additional data to encode for error
             case UPLCTermTag.Builtin: return this.encodeBuiltin(term);
             case UPLCTermTag.Constr: {
-                this.encodeNatural(term.index);
+                this.encodeNaturalBig(term.index);
                 this.encodeList(term.terms, (t) => this.encodeTerm(t));
                 return;
             };

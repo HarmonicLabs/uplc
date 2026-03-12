@@ -1,4 +1,4 @@
-import { Application, Builtin, Case, ConstTyTag, ConstType, ConstValue, ConstValueList, Constr, Delay, ErrorUPLC, Force, Lambda, UPLCConst, UPLCVar, builtinTagFromString, constListTypeUtils, constPairTypeUtils, constT, constTypeEq, constTypeToStirng, eqConstValue, getNRequiredForces } from "../UPLCTerms";
+import { Application, Builtin, Case, ConstTyTag, ConstType, ConstValue, ConstValueList, LedgerValue, Constr, Delay, ErrorUPLC, Force, Lambda, UPLCConst, UPLCVar, builtinTagFromString, constListTypeUtils, constPairTypeUtils, constT, constTypeEq, constTypeToStirng, eqConstValue, getNRequiredForces } from "../UPLCTerms";
 import { UPLCTerm } from "./UPLCTerm";
 import { Data, dataFromCbor, dataFromString, dataFromStringWithOffset } from "@harmoniclabs/plutus-data";
 import { bls12_381_G1_uncompress, bls12_381_G2_uncompress } from "@harmoniclabs/crypto";
@@ -64,7 +64,7 @@ export function _parseUPLCText(
 
     const getNextWord = ( s: string = str ): string => {
         let fstSpaceIdx = s.search(/\s/);
-        if( fstSpaceIdx < 0 ) fstSpaceIdx = str.length - 1;
+        if( fstSpaceIdx < 0 ) fstSpaceIdx = s.length;
         let varName = s.slice( 0, fstSpaceIdx ).trim();
         
         while( 
@@ -242,7 +242,6 @@ export function _parseUPLCText(
     }
 
     // else var
-    offset--;
     const varName = getNextWord();
     offset += varName.length;
     
@@ -375,7 +374,7 @@ export function parseConstValueOfType(
         sliceTrimIncr( str.indexOf("#") + 1 );
         let i = 0;
         while( i < str.length && isHexChar( str[ i++ ] ) );
-        !isHexChar( str[i-1] ) && i--;
+        if( i > 0 ) { !isHexChar( str[i-1] ) && i--; }
         const hex = str.slice( 0, i );
 
         // we can handle it but plutus conformance doesn't allow it
@@ -432,6 +431,26 @@ export function parseConstValueOfType(
     {
         throw new Error("bls12_381_MlResult const type not supported");
     }
+    if( constTypeEq( t, constT.value ) )
+    {
+        // value is list (pair bytestring (list (pair bytestring integer)))
+        const innerType = constT.listOf(
+            constT.pairOf(
+                constT.byteStr,
+                constT.listOf( constT.pairOf( constT.byteStr, constT.int ) )
+            )
+        );
+        // Bound str to just the [...] to avoid consuming trailing ) from outer (con value [...])
+        const listStartIdx = str.indexOf("[");
+        const listCloseOffset = getOffsetToNextClosingBracket( str.slice( listStartIdx + 1 ), "[", "]" );
+        const listEnd = listStartIdx + 1 + listCloseOffset + 1; // +1 to include ]
+        const result = parseConstValueOfType( str.slice( 0, listEnd ), innerType );
+        offset += result.offset;
+        return {
+            value: result.value as LedgerValue,
+            offset
+        };
+    }
 
     if( t[0] === ConstTyTag.pair )
     {
@@ -456,16 +475,19 @@ export function parseConstValueOfType(
         };
     }
 
-    if( t[0] === ConstTyTag.list )
+    if( t[0] === ConstTyTag.list || t[0] === ConstTyTag.array )
     {
         sliceTrimIncr( str.indexOf("[") + 1 );
-        const elemsT = constListTypeUtils.getTypeArgument( t as any );
+        const elemsT = t[0] === ConstTyTag.list
+            ? constListTypeUtils.getTypeArgument( t as any )
+            : (t.slice(1) as ConstType);
         const elems: ConstValue[] = [];
         while( !str.startsWith("]") )
         {
             const elem = parseConstValueOfType( str, elemsT );
             sliceTrimIncr( elem.offset );
-            sliceTrimIncr( str.indexOf(",") + 1 );
+            if( !str.startsWith("]") )
+                sliceTrimIncr( str.indexOf(",") + 1 );
             elems.push( elem.value );
         }
 
@@ -560,34 +582,45 @@ export function parseConstType( str: string ): { type: ConstType, offset: number
     if( str.startsWith("bls12_381_MlResult") )
     throw new Error("bls12_381_MlResult const not supported in textual UPLC");
 
+    if( str.startsWith("value") )
+    {
+        sliceTrimIncr( 5 );
+        return {
+            type: constT.value,
+            offset
+        };
+    }
+
     if( str.startsWith("(") )
     {
         sliceTrimIncr( 1 );
 
         const listIdx = str.indexOf("list");
         const pairIdx = str.indexOf("pair");
+        const arrayIdx = str.indexOf("array");
 
-        if( listIdx < 0 && pairIdx < 0 )
+        if( listIdx < 0 && pairIdx < 0 && arrayIdx < 0 )
         throw new Error(
             "invalid constant type; expected list or pair"
         );
 
-        const isList = isLowestNonNegative( listIdx, pairIdx );
-        const isPair = isLowestNonNegative( pairIdx, listIdx );
+        const isList = isLowestNonNegative( listIdx, pairIdx ) && isLowestNonNegative( listIdx, arrayIdx );
+        const isPair = isLowestNonNegative( pairIdx, listIdx ) && isLowestNonNegative( pairIdx, arrayIdx );
+        const isArray = isLowestNonNegative( arrayIdx, listIdx ) && isLowestNonNegative( arrayIdx, pairIdx );
 
         if( isList )
         {
             sliceTrimIncr( listIdx + 4 );
-    
+
             const elems = parseConstType( str );
             sliceTrimIncr( elems.offset );
-    
+
             while(
                 !str.startsWith(")")
             ) sliceTrimIncr( 1 );
-    
+
             sliceTrimIncr( 1 );
-    
+
             return {
                 type: constT.listOf( elems.type ),
                 offset
@@ -596,32 +629,50 @@ export function parseConstType( str: string ): { type: ConstType, offset: number
         else if( isPair )
         {
             sliceTrimIncr( pairIdx + 4 );
-            
+
             const fst = parseConstType( str );
             sliceTrimIncr( fst.offset );
-    
+
             while(
                 str.startsWith(" ")     ||
                 str.startsWith("\n")
             ) sliceTrimIncr( 1 );
-    
+
             const snd = parseConstType( str );
-            sliceTrimIncr( snd.offset );    
-    
+            sliceTrimIncr( snd.offset );
+
             while(
                 !str.startsWith(")")
             ) sliceTrimIncr( 1 );
-    
+
             sliceTrimIncr( 1 );
-    
+
             return {
                 type: constT.pairOf( fst.type, snd.type ),
                 offset
             }
         }
+        else if( isArray )
+        {
+            sliceTrimIncr( arrayIdx + 5 );
+
+            const elems = parseConstType( str );
+            sliceTrimIncr( elems.offset );
+
+            while(
+                !str.startsWith(")")
+            ) sliceTrimIncr( 1 );
+
+            sliceTrimIncr( 1 );
+
+            return {
+                type: constT.arrayOf( elems.type ),
+                offset
+            }
+        }
         else
         {
-            console.log( str, listIdx, pairIdx );     
+            console.log( str, listIdx, pairIdx );
             throw new Error(
                 "invalid constant type; missing list or pair"
             );
@@ -634,9 +685,15 @@ export function parseConstType( str: string ): { type: ConstType, offset: number
 export function parseUPLCText( str: string, version: UPLCVersion = defaultUplcVersion ): UPLCTerm
 {
     str = str.trim();
-    if( str.startsWith("(program") )
+    // Strip Haskell-style line comments before any other processing
+    str = str.split('\n').map( line => {
+        const idx = line.indexOf('--');
+        return idx >= 0 ? line.slice(0, idx) : line;
+    }).join('\n').trim();
+    const programMatch = str.match(/^\(\s*program\b/);
+    if( programMatch )
     {
-        str = str.slice( 8, str.lastIndexOf(")") ).trim();
+        str = str.slice( programMatch[0].length, str.lastIndexOf(")") ).trim();
         const verStr = str.match(/^\d+\.\d+\.\d+(?!\.)/);
         if( !verStr ) throw new Error("uplc program without version");
         version = UPLCVersion.fromString( verStr[0] );

@@ -1,5 +1,7 @@
 import { Data, isData, eqData } from "@harmoniclabs/plutus-data";
 import { ConstType, constTypeEq, constT, constTypeToStirng, ConstTyTag, isWellFormedConstType, constListTypeUtils, constPairTypeUtils } from "../ConstType";
+// list of (currency_symbol, list of (token_name, amount))
+export type LedgerValue = Array<Pair<Uint8Array, Array<Pair<Uint8Array, bigint>>>>;
 import { uint8ArrayEq } from "@harmoniclabs/uint8array-utils";
 import { BlsG1, BlsG2, BlsResult, bls12_381_G1_equal, bls12_381_G2_equal, bls12_381_eqMlResult, isBlsG1, isBlsG2, isBlsResult } from "@harmoniclabs/crypto";
 import { isObject } from "@harmoniclabs/obj-utils";
@@ -7,6 +9,14 @@ import { isObject } from "@harmoniclabs/obj-utils";
 export type Pair<F,S> = {
     fst: F;
     snd: S;
+}
+
+export function isPair( val: any ): val is Pair<any, any>
+{
+    return (
+        isObject( val ) &&
+        "fst" in val && "snd" in val
+    );
 }
 
 export type ConstValueList
@@ -23,16 +33,17 @@ export type ConstValueList
 
 export type ConstValue
     = number | bigint
-    | Uint8Array 
+    | Uint8Array
     | string
-    | undefined 
+    | undefined
     | boolean
     | ConstValueList
     | Pair<any, any>
     | Data
     | BlsG1
     | BlsG2
-    | BlsResult;
+    | BlsResult
+    | LedgerValue;
 
 export function isConstValueInt( n: any ): n is ( number | bigint )
 {
@@ -231,6 +242,21 @@ export function inferConstTypeFromConstValueOrDefault( value: ConstValue, defaul
     return defaultTy;
 }
 
+export function isLedgerValue( val: any ): val is LedgerValue
+{
+    if( !Array.isArray( val ) ) return false;
+    return (val as any[]).every( entry =>
+        isConstPair( entry ) &&
+        entry.fst instanceof Uint8Array &&
+        Array.isArray( entry.snd ) &&
+        (entry.snd as any[]).every( token =>
+            isConstPair( token ) &&
+            token.fst instanceof Uint8Array &&
+            ( typeof token.snd === "bigint" || typeof token.snd === "number" )
+        )
+    );
+}
+
 export function canConstValueBeOfConstType( val: Readonly<ConstValue>, ty: Readonly<ConstType> ): boolean
 {
     if( !isWellFormedConstType( ty ) ) return false;
@@ -244,13 +270,14 @@ export function canConstValueBeOfConstType( val: Readonly<ConstValue>, ty: Reado
     if( constTypeEq( ty, constT.bls12_381_G1_element ) )         return isBlsG1( val );
     if( constTypeEq( ty, constT.bls12_381_G2_element ) )         return isBlsG2( val );
     if( constTypeEq( ty, constT.bls12_381_MlResult ) )           return isBlsResult( val );
-    if( ty[ 0 ] === ConstTyTag.list )
+    if( constTypeEq( ty, constT.value ) )                        return isLedgerValue( val );
+    if( ty[ 0 ] === ConstTyTag.list || ty[ 0 ] === ConstTyTag.array )
         return (
-            Array.isArray( val ) && 
-            (val as ConstValue[]).every( valueElement => 
+            Array.isArray( val ) &&
+            (val as ConstValue[]).every( valueElement =>
                 canConstValueBeOfConstType(
                     valueElement,
-                    constListTypeUtils.getTypeArgument( ty as [ ConstTyTag.list, ...ConstType ] ) 
+                    ty.slice( 1 ) as ConstType
                 )
             )
         );

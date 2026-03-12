@@ -12,7 +12,11 @@ export enum ConstTyTag {
     /** NEVER ENCODED; still needed for plutus-machine values */
     bls12_381_G1_element = 9,
     bls12_381_G2_element = 10,
-    bls12_381_MlResult = 11
+    bls12_381_MlResult = 11,
+    /** Cardano multi-asset Value (ledger value); not encoded in flat binary */
+    value = 12,
+    /** Plutus V4 array type (typed, random-access); not encoded in flat binary */
+    array = 13
 }
 
 /**
@@ -53,9 +57,10 @@ export function isWellFormedConstType( type: any/*ConstType | ConstTyTag[]*/ ): 
 
     if( !type.every( isConstTypeTag ) ) return false;
 
-    if( 
-        type[0] !== ConstTyTag.list && 
-        type[0] !== ConstTyTag.pair
+    if(
+        type[0] !== ConstTyTag.list &&
+        type[0] !== ConstTyTag.pair &&
+        type[0] !== ConstTyTag.array
     ) return (type.length === 1);
 
 
@@ -66,7 +71,8 @@ export function isWellFormedConstType( type: any/*ConstType | ConstTyTag[]*/ ): 
 
     if(
         type[0] !== ConstTyTag.list &&
-        type[0] !== ConstTyTag.pair
+        type[0] !== ConstTyTag.pair &&
+        type[0] !== ConstTyTag.array
     )
     {
         // returning false anyway, type has too many arguments, not well-formed
@@ -97,7 +103,7 @@ export function isWellFormedConstType( type: any/*ConstType | ConstTyTag[]*/ ): 
     {
         const ty = type[i];
 
-        if( ty === ConstTyTag.list )
+        if( ty === ConstTyTag.list || ty === ConstTyTag.array )
         {
             if(!( (i + 1) < type.length )) return false;
 
@@ -168,10 +174,12 @@ export const constT : Readonly<{
     bool: ConstType
     listOf: ( tyArg: ConstType ) => [ ConstTyTag.list, ...ConstType ]
     pairOf: ( tyArg1: ConstType, tyArg2: ConstType ) => [ ConstTyTag.pair , ...ConstType /*, ...ConstType*/ ]
+    arrayOf: ( tyArg: ConstType ) => [ ConstTyTag.array, ...ConstType ]
     data: ConstType,
     bls12_381_G1_element: ConstType
     bls12_381_G2_element: ConstType
     bls12_381_MlResult: ConstType
+    value: ConstType
 }> = Object.freeze({
 
     int:        Object.freeze([ ConstTyTag.int ]),
@@ -199,12 +207,23 @@ export const constT : Readonly<{
 
         return Object.freeze([ ConstTyTag.pair, ...tyArg1, ...tyArg2 ]) as any;
     },
-    
+
+    arrayOf: ( tyArg: ConstType ) : [ ConstTyTag.array, ...ConstType ] => {
+        if(!(
+            isWellFormedConstType( tyArg )
+        )) throw new Error(
+            "provided argument to 'constT.arrayOf' should be a well formed type"
+        );
+
+        return Object.freeze([ ConstTyTag.array, ...tyArg ]) as any;
+    },
+
     data:       Object.freeze([ ConstTyTag.data ]),
 
     bls12_381_G1_element: Object.freeze([ ConstTyTag.bls12_381_G1_element ]),
     bls12_381_G2_element: Object.freeze([ ConstTyTag.bls12_381_G2_element ]),
-    bls12_381_MlResult:   Object.freeze([ ConstTyTag.bls12_381_MlResult ])
+    bls12_381_MlResult:   Object.freeze([ ConstTyTag.bls12_381_MlResult ]),
+    value:                Object.freeze([ ConstTyTag.value ])
 } as any);
 
 export function isConstTypeTag( constTy: Readonly<ConstTyTag> ): boolean
@@ -223,7 +242,9 @@ export function isConstTypeTag( constTy: Readonly<ConstTyTag> ): boolean
         constTy === ConstTyTag.data    ||
         constTy === ConstTyTag.bls12_381_G1_element    ||
         constTy === ConstTyTag.bls12_381_G2_element    ||
-        constTy === ConstTyTag.bls12_381_MlResult
+        constTy === ConstTyTag.bls12_381_MlResult      ||
+        constTy === ConstTyTag.value                   ||
+        constTy === ConstTyTag.array
     );
 }
 
@@ -238,7 +259,9 @@ export type ConstTyTagString
     | "data"
     | "bls12_381_G1_element"
     | "bls12_381_G2_element"
-    | "bls12_381_MlResult";
+    | "bls12_381_MlResult"
+    | "value"
+    | "array";
 
 
 export function constTypeTagToStirng( ty: Readonly<ConstTyTag> ): ConstTyTagString
@@ -256,6 +279,8 @@ export function constTypeTagToStirng( ty: Readonly<ConstTyTag> ): ConstTyTagStri
         case ConstTyTag.bls12_381_G1_element: return "bls12_381_G1_element";
         case ConstTyTag.bls12_381_G2_element: return "bls12_381_G2_element";
         case ConstTyTag.bls12_381_MlResult: return "bls12_381_MlResult";
+        case ConstTyTag.value: return "value";
+        case ConstTyTag.array: return "array";
 
         default:
             throw new Error("'constTypeTAgToStirng' is supposed to have a member of the 'ConstTy' enum as input but got: " + ty);
@@ -336,15 +361,23 @@ export const constListTypeUtils = Object.freeze({
 
     nonWellFormed: Object.freeze({
         /**
-         * 
-         * @param listTy 
-         * @returns 
+         *
+         * @param listTy
+         * @returns
          *      ```undefined``` only if the type argument was not complete
          *      returns the sliced type argument if too many where provided
          *      same of ```constListTypeUtils.getTypeArgument``` if the type argument was well formed
          */
         getNonWellFormedTypeArgument: getNonWellFormedConstListTypeArgument,
     }),
+});
+
+export const constArrayTypeUtils = Object.freeze({
+    getTypeArgument( arrayTy: ConstType ): ConstType {
+        if( !( arrayTy.length > 1 && arrayTy[0] === ConstTyTag.array ) )
+            throw new Error( "in 'constArrayTypeUtils.getTypeArgument', input type was not a valid array type" );
+        return arrayTy.slice( 1 ) as ConstType;
+    },
 });
 
 // -------------------------------------------------- ConstPairType Utils -------------------------------------------------- //

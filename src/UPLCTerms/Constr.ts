@@ -3,7 +3,7 @@ import { UPLCTermTag } from "../UPLCTerm/UPLCTermTag";
 
 export interface IConstr {
     tag: UPLCTermTag.Constr;
-    index: number; // should be enough for any reasonable program
+    index: bigint;
     terms: UPLCTermObj[];
 }
 export class Constr
@@ -12,17 +12,16 @@ export class Constr
     // return BitStream.fromBinStr("1000");
     static UPLCTag: UPLCTermTag.Constr = UPLCTermTag.Constr;
     readonly tag: UPLCTermTag.Constr = UPLCTermTag.Constr;
-    
-    public index: number;
+
+    public index: bigint;
     public terms: UPLCTerm[];
 
     constructor( index: bigint | number, terms: UPLCTerm[] )
     {
-        this.index = Number( index );
+        this.index = typeof index === "bigint" ? index : BigInt( index );
         this.terms = terms;
         if(!(
-            Number.isSafeInteger( this.index )
-            && this.index >= 0
+            this.index >= BigInt(0)
         )) throw new Error(
             "invalid index; while creating 'Constr' instance, index was: "
             + index

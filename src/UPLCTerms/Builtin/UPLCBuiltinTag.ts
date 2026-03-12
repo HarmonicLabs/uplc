@@ -1,10 +1,15 @@
 export type UPLCBuiltinTagNumber
-    = 0  | 1  | 2  | 3  | 4  | 5  | 6  | 7  | 8  | 9  
-    | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 | 19 
-    | 20 | 21 | 22 | 23 | 24 | 25 | 26 | 27 | 28 | 29 
-    | 30 | 31 | 32 | 33 | 34 | 35 | 36 | 37 | 38 | 39 
-    | 40 | 41 | 42 | 43 | 44 | 45 | 46 | 47 | 48 | 49 
-    | 50 | 51 | 52 | 53 ;
+    = 0  | 1  | 2  | 3  | 4  | 5  | 6  | 7  | 8  | 9
+    | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 | 19
+    | 20 | 21 | 22 | 23 | 24 | 25 | 26 | 27 | 28 | 29
+    | 30 | 31 | 32 | 33 | 34 | 35 | 36 | 37 | 38 | 39
+    | 40 | 41 | 42 | 43 | 44 | 45 | 46 | 47 | 48 | 49
+    | 50 | 51 | 52 | 53 | 54 | 55 | 56 | 57 | 58 | 59
+    | 60 | 61 | 62 | 63 | 64 | 65 | 66 | 67 | 68 | 69
+    | 70 | 71 | 72 | 73 | 74 | 75 | 76 | 77 | 78 | 79
+    | 80 | 81 | 82 | 83 | 84 | 85 | 86 | 87 | 88 | 89
+    | 90 | 91 | 92 | 93 | 94 | 95 | 96 | 97 | 98 | 99
+    | 100 ;
 
 /**
  * to encode as 7-bits
@@ -109,7 +114,22 @@ export enum UPLCBuiltinTag {
     rotateByteString                = 83,
     countSetBits                    = 84,
     findFirstSetBit                 = 85,
-    ripemd_160                      = 86
+    ripemd_160                      = 86,
+    // Chang2 / Plutus V4
+    expModInteger                   = 87,
+    dropList                        = 88,
+    lengthOfArray                   = 89,
+    listToArray                     = 90,
+    indexArray                      = 91,
+    bls12_381_G1_multiScalarMul     = 92,
+    bls12_381_G2_multiScalarMul     = 93,
+    insertCoin                      = 94,
+    lookupCoin                      = 95,
+    unionValue                      = 96,
+    valueContains                   = 97,
+    valueData                       = 98,
+    unValueData                     = 99,
+    scaleValue                      = 100
 }
 Object.freeze( UPLCBuiltinTag );
 
@@ -167,12 +187,23 @@ export function getNRequiredForces( tag: UPLCBuiltinTag ): ( 0 | 1 | 2 )
         return 2;
     }
 
+    // new polymorphic builtins (Chang2/Plutus V4) that require 1 force
+    if(
+        tag === UPLCBuiltinTag.dropList      ||
+        tag === UPLCBuiltinTag.lengthOfArray ||
+        tag === UPLCBuiltinTag.listToArray   ||
+        tag === UPLCBuiltinTag.indexArray
+    )
+    {
+        return 1;
+    }
+
     // tags from 0 to 25 and from 37 to 53 are all fixed in type; no forces requred
     if(
         tag <= 25 ||
-        // all fixed type after constrData 
+        // all fixed type after constrData
         tag >= UPLCBuiltinTag.constrData
-    ) 
+    )
     {
         return 0;
     }
@@ -288,8 +319,22 @@ export function builtinTagToString( tag: UPLCBuiltinTag ): string
             case UPLCBuiltinTag.countSetBits            :           return "countSetBits";
             case UPLCBuiltinTag.findFirstSetBit         :           return "findFirstSetBit";
             case UPLCBuiltinTag.ripemd_160              :           return "ripemd_160";
+            case UPLCBuiltinTag.expModInteger           :           return "expModInteger";
+            case UPLCBuiltinTag.dropList                :           return "dropList";
+            case UPLCBuiltinTag.lengthOfArray           :           return "lengthOfArray";
+            case UPLCBuiltinTag.listToArray             :           return "listToArray";
+            case UPLCBuiltinTag.indexArray              :           return "indexArray";
+            case UPLCBuiltinTag.bls12_381_G1_multiScalarMul:        return "bls12_381_G1_multiScalarMul";
+            case UPLCBuiltinTag.bls12_381_G2_multiScalarMul:        return "bls12_381_G2_multiScalarMul";
+            case UPLCBuiltinTag.insertCoin              :           return "insertCoin";
+            case UPLCBuiltinTag.lookupCoin              :           return "lookupCoin";
+            case UPLCBuiltinTag.unionValue              :           return "unionValue";
+            case UPLCBuiltinTag.valueContains           :           return "valueContains";
+            case UPLCBuiltinTag.valueData               :           return "valueData";
+            case UPLCBuiltinTag.unValueData             :           return "unValueData";
+            case UPLCBuiltinTag.scaleValue              :           return "scaleValue";
 
-            
+
             default:
                 // tag; // check that is of type 'never'
                 return "";
@@ -389,8 +434,21 @@ export function builtinTagFromString( tag: string ): UPLCBuiltinTag
         case "countSetBits":                       return UPLCBuiltinTag.countSetBits
         case "findFirstSetBit":                    return UPLCBuiltinTag.findFirstSetBit
         case "ripemd_160":                         return UPLCBuiltinTag.ripemd_160
+        case "expModInteger":                      return UPLCBuiltinTag.expModInteger
+        case "dropList":                           return UPLCBuiltinTag.dropList
+        case "lengthOfArray":                      return UPLCBuiltinTag.lengthOfArray
+        case "listToArray":                        return UPLCBuiltinTag.listToArray
+        case "indexArray":                         return UPLCBuiltinTag.indexArray
+        case "bls12_381_G1_multiScalarMul":        return UPLCBuiltinTag.bls12_381_G1_multiScalarMul
+        case "bls12_381_G2_multiScalarMul":        return UPLCBuiltinTag.bls12_381_G2_multiScalarMul
+        case "insertCoin":                         return UPLCBuiltinTag.insertCoin
+        case "lookupCoin":                         return UPLCBuiltinTag.lookupCoin
+        case "unionValue":                         return UPLCBuiltinTag.unionValue
+        case "valueContains":                      return UPLCBuiltinTag.valueContains
+        case "valueData":                          return UPLCBuiltinTag.valueData
+        case "unValueData":                        return UPLCBuiltinTag.unValueData
+        case "scaleValue":                         return UPLCBuiltinTag.scaleValue
 
-        
         default:
             // tag; // check that is of type 'never'
             throw new Error("unknow builtin: " + tag)
