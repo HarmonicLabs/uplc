@@ -119,7 +119,8 @@ export class UPLCEncoder extends FlatEncoder
         const bits: number[] = [];
         while (n > 0) {
             bits.push(n & 0x7f);
-            n >>= 7;
+            // use unsigned right shift to avoid signed 32-bit overflow
+            n >>>= 7;
         }
         for (let i = 0; i < bits.length; i++) {
             this.pushBit(i !== bits.length - 1 ? 1 : 0);
