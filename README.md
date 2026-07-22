@@ -1,5 +1,7 @@
 # @harmoniclabs/uplc
 
+[![CI](https://github.com/HarmonicLabs/uplc/actions/workflows/ci.yml/badge.svg)](https://github.com/HarmonicLabs/uplc/actions/workflows/ci.yml)
+
 Typescript/Javascript representation of UPLC (Untyped PLutus Core).
 
 ## Install
