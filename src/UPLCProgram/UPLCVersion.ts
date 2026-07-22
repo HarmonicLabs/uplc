@@ -29,6 +29,14 @@ export class UPLCVersion
             this.major >= 2;
     }
 
+    isV4Friendly(): boolean
+    {
+        // ^1.2.0 || >= 2.*.*
+        return this.major === 1 ?
+            this.minor >= 2 :
+            this.major >= 2;
+    }
+
     toString(): string
     {
         return `${this.major}.${this.minor}.${this.patch}`;
@@ -45,4 +53,4 @@ export class UPLCVersion
     }
 }
 
-export const defaultUplcVersion = new UPLCVersion( 1, 1, 0 );
+export const defaultUplcVersion = new UPLCVersion( 1, 2, 0 );
