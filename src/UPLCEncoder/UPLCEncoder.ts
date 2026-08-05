@@ -116,6 +116,16 @@ export class UPLCEncoder extends FlatEncoder
             this.pushBits( n, 8 );
             return;
         }
+        // JS bitwise operators work on 32-BIT values: `n & 0x7f` and
+        // `n >>>= 7` silently truncate any natural above 2^31 to its low
+        // bits — every flat-encoded integer with |value| in (2^30, 2^52)
+        // (zigzag doubles it into the natural window (2^31, 2^53)) was
+        // corrupted in the emitted program. Only stay on the Number fast
+        // path where 32-bit ops are exact.
+        if (n > 0x7fffffff) {
+            this.encodeNaturalBig(BigInt(n));
+            return;
+        }
         const bits: number[] = [];
         while (n > 0) {
             bits.push(n & 0x7f);
@@ -136,10 +146,10 @@ export class UPLCEncoder extends FlatEncoder
             this.pushBits(Number(n), 8);
             return;
         }
-        if( n <= nMaxSafeInteger ) {
-            this.encodeNatural( Number(n) );
-            return;
-        }
+        // NB: do NOT delegate to `encodeNatural(Number(n))` here for
+        // n <= MAX_SAFE_INTEGER — its 32-bit bitwise ops corrupt every
+        // natural in (2^31, 2^53). The bigint chunker below is correct for
+        // the whole range.
         const bits: number[] = [];
         while (n > 0) {
             bits.push(Number(n & n0x7f));
