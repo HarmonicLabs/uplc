@@ -195,16 +195,34 @@ export function showConstType( t: ConstType ): string
         })`;
     }
 
-    return constTypeToStirng( t );
+    // (`bool` is how the type is written; the package's own name for it is longer, and its parser reads both)
+    return constTypeToStirng( t ) === "boolean" ? "bool" : constTypeToStirng( t );
 }
 
-const vars = "abcdefghilmopqrstuvzwxyjkABCDEFGHILJMNOPQRSTUVZWXYJK".split('');
+// Every letter once. (It had `J` twice: the binders at depth 35 and at depth 50 were both
+// written `J`, and a variable that meant the outer one was read back as the inner one. A
+// program printed and parsed again was then another program — one that could fail where the
+// first did not.)
+const vars = "abcdefghilmopqrstuvzwxyjkABCDEFGHILJMNOPQRSTUVZWXYK".split('');
 
+/**
+ * The name of the binder at depth `dbn`: a name of its own for every depth, so that the text
+ * of a term reads back as the same term. One letter for the first ones, then two, then three
+ * (a numeration with no zero digit, in base `vars.length`).
+ */
 function getVarNameForDbn( dbn: number ): string
 {
     if( dbn < 0 ) return `(${dbn})`;
-    if( dbn < vars.length ) return vars[ dbn ];
-    return vars[ Math.floor( dbn / vars.length ) ] + getVarNameForDbn( dbn - vars.length )
+    let name = "";
+    for( let n = dbn; n >= 0; n = Math.floor( n / vars.length ) - 1 ) name = vars[ n % vars.length ] + name;
+    return name;
+}
+
+/** a constant as the Plutus tools write it: `bool` for the type of booleans, and a data constant in parentheses */
+function showUPLCConstTerm( t: UPLCConst ): string
+{
+    const value = isData( t.value as any ) ? `(${showUPLCConstValue( t.value )})` : showUPLCConstValue( t.value );
+    return `(con ${showConstType( t.type )} ${value})`;
 }
 
 function _showUPLC( t: UPLCTerm, dbn: number ): string
@@ -219,7 +237,7 @@ function _showUPLC( t: UPLCTerm, dbn: number ): string
         return `(lam ${getVarNameForDbn( dbn )} ${ _showUPLC( t.body, dbn + 1 ) })`;
     }
     if( t instanceof Application ) return `[${ _showUPLC( t.func, dbn ) } ${ _showUPLC( t.arg, dbn ) }]`;
-    if( t instanceof UPLCConst ) return `(con ${showConstType(t.type)} ${showUPLCConstValue( t.value )})`;
+    if( t instanceof UPLCConst ) return showUPLCConstTerm( t );
     if( t instanceof Force ) return `(force ${ _showUPLC( t.forced, dbn ) })`;
     if( t instanceof ErrorUPLC ) return "(error)";
     if( t instanceof Builtin )
@@ -250,13 +268,6 @@ export function prettyUPLC( term: UPLCTerm, _indent: number = 2 ): string
 
     const indentStr = " ".repeat(_indent)
 
-    function getVarNameForDbn( dbn: number ): string
-    {
-        if( dbn < 0 ) return `(${dbn})`;
-        if( dbn < vars.length ) return vars[ dbn ];
-        return vars[ Math.floor( dbn / vars.length ) ] + getVarNameForDbn( dbn - vars.length )
-    }
-
     function _prettyUPLC( t: UPLCTerm, dbn: number, depth: number): string
     {
         const indent = `\n${indentStr.repeat( depth )}`;
@@ -270,7 +281,7 @@ export function prettyUPLC( term: UPLCTerm, _indent: number = 2 ): string
             return `${indent}(lam ${getVarNameForDbn( dbn )} ${ _prettyUPLC( t.body, dbn + 1, depth + 1 ) }${indent})`;
         }
         if( t instanceof Application ) return `${indent}[${ _prettyUPLC( t.func, dbn, depth + 1 ) } ${ _prettyUPLC( t.arg, dbn, depth + 1 ) }${indent}]`;
-        if( t instanceof UPLCConst ) return `${indent}(con ${showConstType(t.type)} ${showUPLCConstValue( t.value )})`;
+        if( t instanceof UPLCConst ) return `${indent}${showUPLCConstTerm( t )}`;
         if( t instanceof Force ) return `${indent}(force ${ _prettyUPLC( t.forced, dbn, depth + 1 ) }${indent})`;
         if( t instanceof ErrorUPLC ) return "(error)";
         if( t instanceof Builtin )

@@ -2,7 +2,7 @@ import { Application, Builtin, Case, ConstTyTag, ConstType, ConstValue, ConstVal
 import { UPLCTerm } from "./UPLCTerm";
 import { Data, dataFromCbor, dataFromString, dataFromStringWithOffset } from "@harmoniclabs/plutus-data";
 import { bls12_381_G1_uncompress, bls12_381_G2_uncompress } from "@harmoniclabs/crypto";
-import { fromHex } from "@harmoniclabs/uint8array-utils";
+import { fromHex, toHex } from "@harmoniclabs/uint8array-utils";
 import { indexOfNextCommaOutsideParentesis } from "../utils/indexOfNextCommaOutsideParentesis";
 import { indexOfNextUnmatchedParentesis } from "../utils/indexOfNextUnmatchedParentesis";
 import { getTextBetweenMatchingQuotes } from "../utils/getTextBetweenMatchingQuotes";
@@ -287,6 +287,64 @@ function isLowestNonNegative( a: number, b: number ):  boolean
     return a >= 0 && (b < 0 || a < b);
 }
 
+/** a currency symbol or a token name is at most 32 bytes */
+const VALUE_KEY_MAX_BYTES = 32;
+/** a quantity is a signed integer of 128 bits */
+const VALUE_QUANTITY_MAX = ( BigInt( 1 ) << BigInt( 127 ) ) - BigInt( 1 );
+const VALUE_QUANTITY_MIN = -( BigInt( 1 ) << BigInt( 127 ) );
+
+/**
+ * The value a list of `( currency, [ ( token, quantity ) ] )` entries denotes: a map from
+ * currencies to maps from tokens to quantities. So the keys come out in order (byte by byte,
+ * a prefix before what extends it), the quantities given for one same key are added up, and
+ * what holds nothing is not there: no token with quantity zero, no currency without tokens.
+ *
+ * Throws for what is no value at all: a key of more than 32 bytes, a quantity that does not
+ * fit 128 bits.
+ */
+function ledgerValueOfEntries( entries: LedgerValue ): LedgerValue
+{
+    const checkQuantity = ( quantity: bigint ): bigint => {
+        if( quantity > VALUE_QUANTITY_MAX || quantity < VALUE_QUANTITY_MIN )
+            throw new Error("value constant: quantity out of the range of a 128-bit signed integer");
+        return quantity;
+    };
+    const checkKey = ( key: Uint8Array ): Uint8Array => {
+        if( key.length > VALUE_KEY_MAX_BYTES )
+            throw new Error("value constant: key longer than " + VALUE_KEY_MAX_BYTES + " bytes");
+        return key;
+    };
+    // hex of the key -> the key and what it holds; lowercase hex strings compare as their bytes do
+    const currencies = new Map<string, { key: Uint8Array, tokens: Map<string, { key: Uint8Array, quantity: bigint }> }>();
+    for( const { fst: currency, snd: tokens } of entries )
+    {
+        const currencyHex = toHex( checkKey( currency ) );
+        let held = currencies.get( currencyHex );
+        if( held === undefined ) currencies.set( currencyHex, held = { key: currency, tokens: new Map() } );
+        for( const { fst: token, snd: quantity } of tokens )
+        {
+            const tokenHex = toHex( checkKey( token ) );
+            const sofar = held.tokens.get( tokenHex );
+            held.tokens.set( tokenHex, {
+                key: token,
+                quantity: checkQuantity( ( sofar === undefined ? BigInt( 0 ) : sofar.quantity ) + checkQuantity( BigInt( quantity ) ) )
+            });
+        }
+    }
+    const inOrder = <T>( map: Map<string, T> ): T[] =>
+        Array.from( map.keys() ).sort().map( hex => map.get( hex )! );
+
+    const value: LedgerValue = [];
+    for( const { key, tokens } of inOrder( currencies ) )
+    {
+        const held = inOrder( tokens )
+            .filter( t => t.quantity !== BigInt( 0 ) )
+            .map( t => ({ fst: t.key, snd: t.quantity }) );
+        if( held.length > 0 ) value.push({ fst: key, snd: held });
+    }
+    return value;
+}
+
 export function parseConstValueOfType(
     str: string,
     t: ConstType
@@ -381,7 +439,10 @@ export function parseConstValueOfType(
     }
     if( constTypeEq( t, constT.byteStr ) )
     {
-        sliceTrimIncr( str.indexOf("#") + 1 );
+        // a byte string is written `#` and its hex digits: anything else here (a quoted
+        // string, a number) is not one, and is not skipped to reach a `#` further on
+        if( !str.startsWith("#") ) throw new Error("expected a bytestring constant: '#' and hex digits");
+        sliceTrimIncr( 1 );
         let i = 0;
         while( i < str.length && isHexChar( str[ i++ ] ) );
         if( i > 0 ) { !isHexChar( str[i-1] ) && i--; }
@@ -411,30 +472,28 @@ export function parseConstValueOfType(
     }
     if( constTypeEq( t, constT.bls12_381_G1_element ) )
     {
-        const original = str;
-        str = str.slice( 0, str.indexOf(")") + 1 ).trimStart();
-        offset += (original.length - original.indexOf( str )) + 2 /*0x*/ + 96 ;
-
-        const match = str.match(/^0x[0-9a-fA-F]{96}(?![0-9a-fA-F]+)/);// 48 bytes; 96 hex chars
+        // `str` starts at the element: "0x" and the 48 bytes (96 hex digits) of the compressed point
+        const match = str.match(/^0x[0-9a-fA-F]{96}(?![0-9a-fA-F])/);
         if( !match ) throw new Error("missing bls g1 compressed elem");
 
         const value = bls12_381_G1_uncompress(
             fromHex( match[0].slice(2) )
         );
+        // the offset counts what was read and no more: a list goes on with its next element from there
+        sliceTrimIncr( match[0].length );
         return { value, offset };
     }
     if( constTypeEq( t, constT.bls12_381_G2_element ) )
     {
-        const original = str;
-        str = str.slice( 0, str.indexOf(")") + 1 ).trimStart();
-        offset += (original.length - original.indexOf( str )) + 2 /*0x*/ + 192 ;
-
-        const match = str.match(/^0x[0-9a-fA-F]{192}(?![0-9a-fA-F]+)/);// 96 bytes; 192 hex chars
+        // `str` starts at the element: "0x" and the 96 bytes (192 hex digits) of the compressed point
+        const match = str.match(/^0x[0-9a-fA-F]{192}(?![0-9a-fA-F])/);
         if( !match ) throw new Error("missing bls g2 compressed elem");
         
         const value = bls12_381_G2_uncompress(
             fromHex( match[0].slice(2) )
         );
+        // the offset counts what was read and no more: a list goes on with its next element from there
+        sliceTrimIncr( match[0].length );
         return { value, offset };
     }
     if( constTypeEq( t, constT.bls12_381_MlResult ) )
@@ -457,7 +516,8 @@ export function parseConstValueOfType(
         const result = parseConstValueOfType( str.slice( 0, listEnd ), innerType );
         offset += result.offset;
         return {
-            value: result.value as LedgerValue,
+            // what is written is a list of entries; the value it denotes is the map they make
+            value: ledgerValueOfEntries( result.value as LedgerValue ),
             offset
         };
     }

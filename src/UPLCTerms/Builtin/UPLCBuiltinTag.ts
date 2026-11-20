@@ -84,6 +84,9 @@ export enum UPLCBuiltinTag {
     bls12_381_G1_neg                = 55,
     bls12_381_G1_scalarMul          = 56,
     bls12_381_G1_equal              = 57,
+    // (compress, uncompress, hashToGroup: the order of the flat encoding in
+    // Plutus' `Builtins.hs`, which is NOT the order the constructors are
+    // declared in there, where hashToGroup comes first)
     bls12_381_G1_compress           = 58,
     bls12_381_G1_uncompress         = 59,
     bls12_381_G1_hashToGroup        = 60,
